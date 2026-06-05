@@ -1,0 +1,123 @@
+@startuml 公路桥梁检查系统用例图
+
+!define actor_user actor
+
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+title 公路桥梁初始检查信息系统 - 用例图
+
+left to right direction
+
+actor_user 管理员 as Admin #LightBlue
+actor_user 检查员 as Inspector #LightGreen
+
+rectangle "公路桥梁初始检查信息系统" {
+    
+    package "用户管理" {
+        usecase (用户登录) as UC_Login
+        usecase (添加用户) as UC_AddUser
+        usecase (修改用户) as UC_EditUser
+        usecase (删除用户) as UC_DelUser
+        usecase (重置密码) as UC_ResetPwd
+    }
+    
+    package "桥梁管理" {
+        usecase (添加桥梁卡片) as UC_AddBridge
+        usecase (修改桥梁信息) as UC_EditBridge
+        usecase (删除桥梁) as UC_DelBridge
+        usecase (查询桥梁) as UC_SearchBridge
+        usecase (查看地图定位) as UC_MapView
+        usecase (上传桥梁照片) as UC_UploadPhoto
+    }
+    
+    package "初始检查" {
+        usecase (填写初始检查记录) as UC_AddInitial
+        usecase (修改初始检查记录) as UC_EditInitial
+        usecase (删除初始检查记录) as UC_DelInitial
+        usecase (查询初始检查记录) as UC_SearchInitial
+    }
+    
+    package "定期检查" {
+        usecase (填写定期检查记录) as UC_AddRegular
+        usecase (修改定期检查记录) as UC_EditRegular
+        usecase (删除定期检查记录) as UC_DelRegular
+        usecase (计算BCI指数) as UC_CalcBCI
+        usecase (部件详细评分) as UC_ComponentScore
+        usecase (生成评定报告) as UC_GenerateReport
+    }
+    
+    package "统计查询" {
+        usecase (查看桥梁统计) as UC_Statistics
+        usecase (导出报表) as UC_ExportReport
+        usecase (按技术状况筛选) as UC_FilterStatus
+    }
+    
+    package "系统维护" {
+        usecase (数据备份) as UC_Backup
+        usecase (数据恢复) as UC_Restore
+        usecase (查看系统日志) as UC_ViewLog
+    }
+}
+
+' 管理员权限
+Admin --> UC_Login
+Admin --> UC_AddUser
+Admin --> UC_EditUser
+Admin --> UC_DelUser
+Admin --> UC_ResetPwd
+Admin --> UC_AddBridge
+Admin --> UC_EditBridge
+Admin --> UC_DelBridge
+Admin --> UC_SearchBridge
+Admin --> UC_MapView
+Admin --> UC_UploadPhoto
+Admin --> UC_AddInitial
+Admin --> UC_EditInitial
+Admin --> UC_DelInitial
+Admin --> UC_SearchInitial
+Admin --> UC_AddRegular
+Admin --> UC_EditRegular
+Admin --> UC_DelRegular
+Admin --> UC_CalcBCI
+Admin --> UC_ComponentScore
+Admin --> UC_GenerateReport
+Admin --> UC_Statistics
+Admin --> UC_ExportReport
+Admin --> UC_FilterStatus
+Admin --> UC_Backup
+Admin --> UC_Restore
+Admin --> UC_ViewLog
+
+' 检查员权限
+Inspector --> UC_Login
+Inspector --> UC_SearchBridge
+Inspector --> UC_MapView
+Inspector --> UC_AddInitial
+Inspector --> UC_EditInitial
+Inspector --> UC_SearchInitial
+Inspector --> UC_AddRegular
+Inspector --> UC_EditRegular
+Inspector --> UC_CalcBCI
+Inspector --> UC_ComponentScore
+Inspector --> UC_Statistics
+Inspector --> UC_FilterStatus
+
+' 包含关系
+UC_AddRegular ..> UC_CalcBCI : <<include>>
+UC_GenerateReport ..> UC_ExportReport : <<include>>
+
+' 扩展关系
+UC_AddRegular ..> UC_ComponentScore : <<extend>>
+
+note right of Admin
+    拥有所有权限
+    包括用户管理
+end note
+
+note right of Inspector
+    只能操作检查相关功能
+    不能管理用户和系统维护
+end note
+
+@enduml

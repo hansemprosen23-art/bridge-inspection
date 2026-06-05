@@ -1,0 +1,87 @@
+@startuml 公路桥梁检查系统数据流图-一层
+
+!define process(x) rectangle x
+!define datastore(x) database x
+
+skinparam rectangle {
+    BackgroundColor #E3F2FD
+    BorderColor #1565C0
+}
+
+skinparam database {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+}
+
+title 公路桥梁初始检查信息系统 - 一层数据流图（DFD 1层）
+
+actor 管理员 as Admin
+actor 检查员 as Inspector
+
+rectangle "公路桥梁初始检查信息系统" {
+    
+    rectangle "P1\n用户管理模块" as P1 #E3F2FD
+    rectangle "P2\n桥梁管理模块" as P2 #E3F2FD
+    rectangle "P3\n初始检查模块" as P3 #E3F2FD
+    rectangle "P4\n定期检查模块" as P4 #E3F2FD
+    rectangle "P5\n统计查询模块" as P5 #E3F2FD
+    rectangle "P6\n系统维护模块" as P6 #E3F2FD
+    
+    database "D1\n用户表" as D1 #FFF3E0
+    database "D2\n桥梁表" as D2 #FFF3E0
+    database "D3\n初始检查表" as D3 #FFF3E0
+    database "D4\n定期检查表" as D4 #FFF3E0
+    database "D5\n部件评分表" as D5 #FFF3E0
+    database "D6\n系统日志" as D6 #FFF3E0
+}
+
+' 管理员输入
+Admin --> P1 : 用户信息\n(增删改查)
+Admin --> P2 : 桥梁信息\n(增删改查)
+Admin --> P6 : 备份/恢复指令
+
+' 检查员输入
+Inspector --> P2 : 查询桥梁
+Inspector --> P3 : 初始检查数据
+Inspector --> P4 : 定期检查数据\n部件评分
+Inspector --> P5 : 统计查询请求
+
+' 模块间数据流
+P1 --> P1 : 登录验证
+P2 --> P3 : 桥梁ID
+P2 --> P4 : 桥梁ID\n桥型信息
+P3 --> P2 : 更新技术状况
+P4 --> P2 : 更新BCI/技术状况
+P4 --> P5 : BCI数据
+P6 --> D6 : 日志记录
+
+' 数据存储
+P1 <--> D1 : 用户数据
+P2 <--> D2 : 桥梁数据
+P3 <--> D3 : 初始检查数据
+P4 <--> D4 : 定期检查数据
+P4 <--> D5 : 部件评分数据
+P5 <--> D2 : 桥梁统计
+P5 <--> D4 : 检查统计
+P6 <--> D6 : 日志数据
+
+' 输出
+P1 --> Admin : 操作结果
+P2 --> Admin : 桥梁列表
+P2 --> Inspector : 桥梁信息
+P3 --> Inspector : 检查记录
+P4 --> Inspector : BCI结果\n技术状况
+P5 --> Admin : 统计报表
+P5 --> Inspector : 统计图表
+P6 --> Admin : 备份文件
+
+note right of P4
+    BCI计算流程:
+    1. 获取部件评分(D5)
+    2. 按权重计算各部分BCI
+    3. 加权计算全桥BCI
+    4. 确定技术状况等级
+    5. 更新桥梁表(D2)
+end note
+
+@enduml

@@ -4,14 +4,21 @@ import entity.Bridge;
 import entity.BridgeRegularCheck;
 import service.BridgeRegularCheckService;
 import service.BridgeService;
+import service.ReportService;
 import ui.common.*;
+import util.BCICalculator;
+import util.Logger;
+import util.ValidationUtil;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 桥梁定期检查记录管理面板
@@ -22,7 +29,7 @@ public class BridgeRegularCheckPanel extends JPanel {
     private JTable table;
     private DefaultTableModel tableModel;
     private JTextField searchField;
-    private RoundedButton addBtn, editBtn, deleteBtn, calcBtn;
+    private RoundedButton addBtn, editBtn, deleteBtn, calcBtn, templateBtn, reportBtn;
     private OutlineButton searchBtn, refreshBtn;
 
     private JComboBox<String> bridgeCombo;
@@ -97,13 +104,17 @@ public class BridgeRegularCheckPanel extends JPanel {
         editBtn = new RoundedButton("修改", ThemeColors.INFO);
         deleteBtn = new RoundedButton("删除", ThemeColors.DANGER);
         calcBtn = new RoundedButton("计算BCI", new Color(123, 31, 162));
+        templateBtn = new RoundedButton("检查模板", new Color(0, 131, 143));
+        reportBtn = new RoundedButton("导出报告", new Color(0, 105, 92));
 
         panel.add(new JLabel("搜索桥梁:"));
         panel.add(searchField);
         panel.add(searchBtn);
         panel.add(refreshBtn);
         panel.add(Box.createHorizontalStrut(10));
+        panel.add(templateBtn);
         panel.add(calcBtn);
+        panel.add(reportBtn);
         panel.add(Box.createHorizontalStrut(10));
         panel.add(addBtn);
         panel.add(editBtn);
@@ -119,6 +130,8 @@ public class BridgeRegularCheckPanel extends JPanel {
         editBtn.addActionListener(e -> doEdit());
         deleteBtn.addActionListener(e -> doDelete());
         calcBtn.addActionListener(e -> doCalcBCI());
+        templateBtn.addActionListener(e -> doShowTemplate());
+        reportBtn.addActionListener(e -> doExportReport());
 
         add(panel, BorderLayout.CENTER);
     }
@@ -337,16 +350,82 @@ public class BridgeRegularCheckPanel extends JPanel {
             int sup = Integer.parseInt(superstructureScoreField.getText().trim().isEmpty() ? "0" : superstructureScoreField.getText().trim());
             int sub = Integer.parseInt(substructureScoreField.getText().trim().isEmpty() ? "0" : substructureScoreField.getText().trim());
             int acc = Integer.parseInt(accessoryScoreField.getText().trim().isEmpty() ? "0" : accessoryScoreField.getText().trim());
-            if (deck < 0 || deck > 100 || sup < 0 || sup > 100 || sub < 0 || sub > 100 || acc < 0 || acc > 100) {
+            if (!ValidationUtil.isValidScore(deck) || !ValidationUtil.isValidScore(sup)
+                    || !ValidationUtil.isValidScore(sub) || !ValidationUtil.isValidScore(acc)) {
                 JOptionPane.showMessageDialog(this, "评分必须在0-100之间！", "错误", JOptionPane.ERROR_MESSAGE);
                 return;
             }
             double bci = BridgeRegularCheckService.getInstance().calculateBCI(deck, sup, sub, acc);
             String status = BridgeRegularCheckService.getInstance().determineTechStatus(bci);
+            String desc = BridgeRegularCheckService.getInstance().getTechStatusDesc(status);
             bciField.setText(String.format("%.2f", bci));
             techStatusBox.setSelectedItem(status);
+            JOptionPane.showMessageDialog(this,
+                String.format("BCI = %.2f\n技术状况等级: %s\n(%s)\n\n计算说明:\n桥面系权重15%% + 上部结构权重35%% + 下部结构权重35%% + 附属设施权重15%%",
+                bci, status, desc),
+                "BCI计算结果", JOptionPane.INFORMATION_MESSAGE);
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "评分必须为数字！", "错误", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void doShowTemplate() {
+        String bridgeItem = (String) bridgeCombo.getSelectedItem();
+        String bridgeType = "梁式桥";
+        if (bridgeItem != null) {
+            int bridgeId = Integer.parseInt(bridgeItem.split("-")[0]);
+            Bridge bridge = BridgeService.getInstance().getBridgeById(bridgeId);
+            if (bridge != null && bridge.getBridgeType() != null) {
+                bridgeType = bridge.getBridgeType();
+            }
+        }
+
+        Map<String, Map<String, Double>> template = BridgeRegularCheckService.getInstance().getCheckTemplate(bridgeType);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("桥型: ").append(bridgeType).append("\n\n");
+        for (Map.Entry<String, Map<String, Double>> entry : template.entrySet()) {
+            sb.append("【").append(entry.getKey()).append("】\n");
+            for (Map.Entry<String, Double> comp : entry.getValue().entrySet()) {
+                sb.append("  - ").append(comp.getKey()).append(" (权重").append(String.format("%.1f%%", comp.getValue() * 100)).append(")\n");
+            }
+            sb.append("\n");
+        }
+        sb.append("注：按《JTG 5120-2021》规范，各部分权重为:\n");
+        sb.append(String.format("桥面系 %.0f%% + 上部结构 %.0f%% + 下部结构 %.0f%% + 附属设施 %.0f%%",
+            BCICalculator.WEIGHT_DECK * 100,
+            BCICalculator.WEIGHT_SUPERSTRUCTURE * 100,
+            BCICalculator.WEIGHT_SUBSTRUCTURE * 100,
+            BCICalculator.WEIGHT_ACCESSORY * 100));
+
+        JTextArea textArea = new JTextArea(sb.toString());
+        textArea.setFont(new Font("微软雅黑", Font.PLAIN, 13));
+        textArea.setEditable(false);
+        textArea.setLineWrap(true);
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setPreferredSize(new Dimension(450, 400));
+        JOptionPane.showMessageDialog(this, scrollPane, "检查项目模板", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void doExportReport() {
+        if (selectedId <= 0) {
+            JOptionPane.showMessageDialog(this, "请先选择要导出的检查记录！", "提示", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        BridgeRegularCheck check = BridgeRegularCheckService.getInstance().getCheckById(selectedId);
+        if (check == null) return;
+
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new File("桥梁评定报告_" + check.getCheckNo() + ".html"));
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            String path = file.getAbsolutePath();
+            if (!path.endsWith(".html")) path += ".html";
+            if (ReportService.getInstance().generateBridgeReport(check.getBridgeId(), path)) {
+                JOptionPane.showMessageDialog(this, "报告生成成功！\n保存路径: " + path);
+            } else {
+                JOptionPane.showMessageDialog(this, "报告生成失败！", "错误", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
@@ -411,6 +490,17 @@ public class BridgeRegularCheckPanel extends JPanel {
             return null;
         }
 
+        // 日期格式校验
+        if (!ValidationUtil.isValidDate(checkDate)) {
+            JOptionPane.showMessageDialog(this, "检查日期格式错误，应为 yyyy-MM-dd！", "错误", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+        String nextCheckDate = nextCheckDateField.getText().trim();
+        if (!nextCheckDate.isEmpty() && !ValidationUtil.isValidDate(nextCheckDate)) {
+            JOptionPane.showMessageDialog(this, "下次检查日期格式错误，应为 yyyy-MM-dd！", "错误", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+
         BridgeRegularCheck c = new BridgeRegularCheck();
         c.setBridgeId(bridgeId);
         c.setCheckNo(checkNo);
@@ -420,10 +510,19 @@ public class BridgeRegularCheckPanel extends JPanel {
         c.setTemperature(temperatureField.getText().trim());
         c.setCheckType((String) checkTypeBox.getSelectedItem());
         try {
-            c.setDeckScore(Integer.parseInt(deckScoreField.getText().trim().isEmpty() ? "0" : deckScoreField.getText().trim()));
-            c.setSuperstructureScore(Integer.parseInt(superstructureScoreField.getText().trim().isEmpty() ? "0" : superstructureScoreField.getText().trim()));
-            c.setSubstructureScore(Integer.parseInt(substructureScoreField.getText().trim().isEmpty() ? "0" : substructureScoreField.getText().trim()));
-            c.setAccessoryScore(Integer.parseInt(accessoryScoreField.getText().trim().isEmpty() ? "0" : accessoryScoreField.getText().trim()));
+            int deck = Integer.parseInt(deckScoreField.getText().trim().isEmpty() ? "0" : deckScoreField.getText().trim());
+            int sup = Integer.parseInt(superstructureScoreField.getText().trim().isEmpty() ? "0" : superstructureScoreField.getText().trim());
+            int sub = Integer.parseInt(substructureScoreField.getText().trim().isEmpty() ? "0" : substructureScoreField.getText().trim());
+            int acc = Integer.parseInt(accessoryScoreField.getText().trim().isEmpty() ? "0" : accessoryScoreField.getText().trim());
+            if (!ValidationUtil.isValidScore(deck) || !ValidationUtil.isValidScore(sup)
+                    || !ValidationUtil.isValidScore(sub) || !ValidationUtil.isValidScore(acc)) {
+                JOptionPane.showMessageDialog(this, "评分必须在0-100之间！", "错误", JOptionPane.ERROR_MESSAGE);
+                return null;
+            }
+            c.setDeckScore(deck);
+            c.setSuperstructureScore(sup);
+            c.setSubstructureScore(sub);
+            c.setAccessoryScore(acc);
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "评分必须为数字！", "错误", JOptionPane.ERROR_MESSAGE);
             return null;
@@ -435,7 +534,7 @@ public class BridgeRegularCheckPanel extends JPanel {
         c.setMaintenanceSuggest(maintenanceSuggestArea.getText().trim());
         c.setLimitationSuggest(limitationSuggestArea.getText().trim());
         c.setCheckConclusion(checkConclusionArea.getText().trim());
-        c.setNextCheckDate(nextCheckDateField.getText().trim());
+        c.setNextCheckDate(nextCheckDate);
         return c;
     }
 

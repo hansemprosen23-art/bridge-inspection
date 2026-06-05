@@ -2,13 +2,17 @@ package ui;
 
 import entity.Bridge;
 import service.BridgeService;
+import service.ReportService;
 import ui.common.*;
+import util.Logger;
+import util.ValidationUtil;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
 import java.util.List;
 
 /**
@@ -20,7 +24,7 @@ public class BridgeManagePanel extends JPanel {
     private JTable table;
     private DefaultTableModel tableModel;
     private JTextField searchField;
-    private RoundedButton addBtn, editBtn, deleteBtn;
+    private RoundedButton addBtn, editBtn, deleteBtn, mapBtn, exportBtn;
     private OutlineButton searchBtn, refreshBtn;
 
     private JTextField bridgeNoField, bridgeNameField, routeNameField, routeGradeField;
@@ -92,12 +96,17 @@ public class BridgeManagePanel extends JPanel {
         addBtn = new RoundedButton("新增", ThemeColors.SUCCESS);
         editBtn = new RoundedButton("修改", ThemeColors.INFO);
         deleteBtn = new RoundedButton("删除", ThemeColors.DANGER);
+        mapBtn = new RoundedButton("地图定位", new Color(123, 31, 162));
+        exportBtn = new RoundedButton("导出报表", new Color(0, 131, 143));
 
         panel.add(new JLabel("搜索:"));
         panel.add(searchField);
         panel.add(searchBtn);
         panel.add(refreshBtn);
-        panel.add(Box.createHorizontalStrut(20));
+        panel.add(Box.createHorizontalStrut(10));
+        panel.add(mapBtn);
+        panel.add(exportBtn);
+        panel.add(Box.createHorizontalStrut(10));
         panel.add(addBtn);
         panel.add(editBtn);
         panel.add(deleteBtn);
@@ -111,6 +120,8 @@ public class BridgeManagePanel extends JPanel {
         addBtn.addActionListener(e -> doAdd());
         editBtn.addActionListener(e -> doEdit());
         deleteBtn.addActionListener(e -> doDelete());
+        mapBtn.addActionListener(e -> doShowMap());
+        exportBtn.addActionListener(e -> doExport());
 
         add(panel, BorderLayout.CENTER);
     }
@@ -432,6 +443,32 @@ public class BridgeManagePanel extends JPanel {
         }
     }
 
+    private void doShowMap() {
+        String lon = longitudeField.getText().trim();
+        String lat = latitudeField.getText().trim();
+        if (lon.isEmpty() || lat.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "请先选择有经纬度信息的桥梁！", "提示", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        String name = bridgeNameField.getText().trim();
+        new MapPreviewFrame(lon, lat, name.isEmpty() ? "桥梁位置" : name).setVisible(true);
+    }
+
+    private void doExport() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new File("桥梁列表导出.csv"));
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            String path = file.getAbsolutePath();
+            if (!path.endsWith(".csv")) path += ".csv";
+            if (ReportService.getInstance().exportBridgesToCSV(path)) {
+                JOptionPane.showMessageDialog(this, "导出成功！\n保存路径: " + path);
+            } else {
+                JOptionPane.showMessageDialog(this, "导出失败！", "错误", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
     private Bridge getFormData() {
         String bridgeNo = bridgeNoField.getText().trim();
         String bridgeName = bridgeNameField.getText().trim();
@@ -439,6 +476,31 @@ public class BridgeManagePanel extends JPanel {
             JOptionPane.showMessageDialog(this, "桥梁编号和名称不能为空！", "提示", JOptionPane.WARNING_MESSAGE);
             return null;
         }
+
+        // 日期格式校验
+        String completeDate = completeDateField.getText().trim();
+        String openDate = openDateField.getText().trim();
+        if (!ValidationUtil.isValidDate(completeDate)) {
+            JOptionPane.showMessageDialog(this, "竣工日期格式错误，应为 yyyy-MM-dd！", "错误", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+        if (!ValidationUtil.isValidDate(openDate)) {
+            JOptionPane.showMessageDialog(this, "通车日期格式错误，应为 yyyy-MM-dd！", "错误", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+
+        // 经纬度校验
+        String lon = longitudeField.getText().trim();
+        String lat = latitudeField.getText().trim();
+        if (!lon.isEmpty() && !ValidationUtil.isValidLongitude(lon)) {
+            JOptionPane.showMessageDialog(this, "经度格式错误，范围应为 -180 ~ 180！", "错误", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+        if (!lat.isEmpty() && !ValidationUtil.isValidLatitude(lat)) {
+            JOptionPane.showMessageDialog(this, "纬度格式错误，范围应为 -90 ~ 90！", "错误", JOptionPane.ERROR_MESSAGE);
+            return null;
+        }
+
         Bridge b = new Bridge();
         b.setBridgeNo(bridgeNo);
         b.setBridgeName(bridgeName);
@@ -461,8 +523,8 @@ public class BridgeManagePanel extends JPanel {
         b.setDesignUnit(designUnitField.getText().trim());
         b.setConstructUnit(constructUnitField.getText().trim());
         b.setSuperviseUnit(superviseUnitField.getText().trim());
-        b.setCompleteDate(completeDateField.getText().trim());
-        b.setOpenDate(openDateField.getText().trim());
+        b.setCompleteDate(completeDate);
+        b.setOpenDate(openDate);
         b.setManageUnit(manageUnitField.getText().trim());
         b.setMaintainUnit(maintainUnitField.getText().trim());
         b.setCheckLevel((String) checkLevelBox.getSelectedItem());
@@ -471,8 +533,8 @@ public class BridgeManagePanel extends JPanel {
         } catch (NumberFormatException e) {
             b.setTechStatus(1);
         }
-        b.setLongitude(longitudeField.getText().trim());
-        b.setLatitude(latitudeField.getText().trim());
+        b.setLongitude(lon);
+        b.setLatitude(lat);
         b.setRemark(remarkArea.getText().trim());
         return b;
     }

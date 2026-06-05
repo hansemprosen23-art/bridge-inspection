@@ -1,0 +1,205 @@
+@startuml 公路桥梁检查系统类图
+
+skinparam class {
+    BackgroundColor White
+    ArrowColor #666666
+    BorderColor #333333
+}
+
+title 公路桥梁初始检查信息系统 - 类图
+
+package "entity" {
+    class Bridge {
+        -id: int
+        -bridgeNo: String
+        -bridgeName: String
+        -bridgeType: String
+        -longitude: String
+        -latitude: String
+        +getters/setters()
+    }
+    
+    class BridgeInitialCheck {
+        -id: int
+        -bridgeId: int
+        -checkNo: String
+        -checkDate: String
+        -checker: String
+        +getters/setters()
+    }
+    
+    class BridgeRegularCheck {
+        -id: int
+        -bridgeId: int
+        -checkNo: String
+        -deckScore: int
+        -superstructureScore: int
+        -substructureScore: int
+        -accessoryScore: int
+        -bci: double
+        -techStatus: String
+        +getters/setters()
+    }
+    
+    class BridgeComponentScore {
+        -id: int
+        -regularCheckId: int
+        -category: String
+        -componentName: String
+        -score: double
+        -weight: double
+        +getters/setters()
+    }
+    
+    class User {
+        -id: int
+        -username: String
+        -password: String
+        -realName: String
+        -role: String
+        +getters/setters()
+    }
+}
+
+package "dao" {
+    interface BridgeDao {
+        +add(Bridge): boolean
+        +update(Bridge): boolean
+        +delete(int): boolean
+        +findById(int): Bridge
+        +findAll(): List<Bridge>
+    }
+    
+    class BridgeDaoImpl implements BridgeDao {
+        +add(Bridge): boolean
+        +update(Bridge): boolean
+        +delete(int): boolean
+        -mapBridge(ResultSet): Bridge
+    }
+    
+    interface BridgeRegularCheckDao {
+        +add(BridgeRegularCheck): boolean
+        +update(BridgeRegularCheck): boolean
+        +delete(int): boolean
+        +findAll(): List<BridgeRegularCheck>
+    }
+    
+    class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao
+    
+    interface BridgeComponentScoreDao {
+        +add(BridgeComponentScore): boolean
+        +findByCheckId(int): List<BridgeComponentScore>
+    }
+    
+    class BridgeComponentScoreDaoImpl implements BridgeComponentScoreDao
+    
+    interface UserDao {
+        +add(User): boolean
+        +findByUsername(String): User
+        +updatePassword(int, String): boolean
+    }
+    
+    class UserDaoImpl implements UserDao
+}
+
+package "service" {
+    class BridgeService {
+        -instance: BridgeService
+        -bridgeDao: BridgeDao
+        +getInstance(): BridgeService
+        +addBridge(Bridge): boolean
+        +updateBridge(Bridge): boolean
+        +deleteBridge(int): boolean
+        +getAllBridges(): List<Bridge>
+    }
+    
+    class BridgeRegularCheckService {
+        -instance: BridgeRegularCheckService
+        -checkDao: BridgeRegularCheckDao
+        -componentScoreDao: BridgeComponentScoreDao
+        +getInstance(): BridgeRegularCheckService
+        +addCheck(BridgeRegularCheck): boolean
+        +calculateBCI(int,int,int,int): double
+        +determineTechStatus(double): String
+        +getCheckTemplate(String): Map
+    }
+    
+    class UserService {
+        -instance: UserService
+        -userDao: UserDao
+        +getInstance(): UserService
+        +login(String, String): User
+        +addUser(User): boolean
+        +changePassword(int, String, String): boolean
+    }
+}
+
+package "ui" {
+    class LoginFrame extends JFrame
+    class MainFrame extends JFrame
+    class BridgeManagePanel extends JPanel
+    class BridgeRegularCheckPanel extends JPanel
+    class BridgeInitialCheckPanel extends JPanel
+    class StatisticsPanel extends JPanel
+    class UserManagePanel extends JPanel
+}
+
+package "util" {
+    class DBUtil {
+        +getConnection(): Connection
+        +close(Connection, Statement, ResultSet)
+        +beginTransaction(Connection)
+        +commit(Connection)
+        +rollback(Connection)
+    }
+    
+    class BCICalculator {
+        +calculateBCI(double,double,double,double): double
+        +calculatePartBCI(Map, Map): double
+        +determineTechStatus(double): String
+        +getAllComponents(String): Map
+    }
+    
+    class PasswordUtil {
+        +encrypt(String, String): String
+        +verify(String, String, String): boolean
+        +generateSalt(): String
+    }
+    
+    class Logger {
+        +info(String)
+        +warn(String)
+        +error(String, Exception)
+    }
+    
+    class ValidationUtil {
+        +isValidDate(String): boolean
+        +isValidLongitude(String): boolean
+        +isValidLatitude(String): boolean
+    }
+}
+
+' 关联关系
+BridgeService --> BridgeDao
+BridgeRegularCheckService --> BridgeRegularCheckDao
+BridgeRegularCheckService --> BridgeComponentScoreDao
+UserService --> UserDao
+
+BridgeDaoImpl ..> DBUtil
+BridgeRegularCheckDaoImpl ..> DBUtil
+UserDaoImpl ..> DBUtil
+
+BridgeRegularCheckService ..> BCICalculator
+UserService ..> PasswordUtil
+
+LoginFrame --> UserService
+MainFrame --> BridgeService
+BridgeManagePanel --> BridgeService
+BridgeRegularCheckPanel --> BridgeRegularCheckService
+BridgeRegularCheckPanel --> BridgeService
+
+Bridge "1" -- "0..*" BridgeInitialCheck : 拥有 >
+Bridge "1" -- "0..*" BridgeRegularCheck : 拥有 >
+BridgeRegularCheck "1" -- "0..*" BridgeComponentScore : 包含 >
+
+@enduml

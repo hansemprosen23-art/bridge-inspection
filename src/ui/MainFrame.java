@@ -19,13 +19,14 @@ public class MainFrame extends JFrame {
     private JPanel[] navItems;
     private int selectedIndex = 0;
     
-    private final String[] navTitles = {"桥梁卡片", "初始检查", "定期检查", "数据统计", "用户管理"};
+    private final String[] navTitles = {"桥梁卡片", "初始检查", "定期检查", "数据统计", "用户管理", "系统维护"};
     private final Color[] navColors = {
         new Color(41, 98, 255),
         new Color(46, 125, 50),
         new Color(2, 136, 209),
         new Color(123, 31, 162),
-        new Color(245, 124, 0)
+        new Color(245, 124, 0),
+        new Color(96, 125, 139)
     };
     
     public MainFrame(User user) {
@@ -41,7 +42,7 @@ public class MainFrame extends JFrame {
     
     private void initComponents() {
         // 导航项
-        int navCount = currentUser.isAdmin() ? 5 : 4;
+        int navCount = currentUser.isAdmin() ? 6 : 4;
         navItems = new JPanel[navCount];
         navLabels = new JLabel[navCount];
     }
@@ -77,11 +78,11 @@ public class MainFrame extends JFrame {
         navPanel.setLayout(new BoxLayout(navPanel, BoxLayout.Y_AXIS));
         navPanel.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
         
-        String[] titles = currentUser.isAdmin() ? navTitles : 
+        String[] titles = currentUser.isAdmin() ? navTitles :
             new String[]{"桥梁卡片", "初始检查", "定期检查", "数据统计"};
-        Color[] colors = currentUser.isAdmin() ? navColors : 
+        Color[] colors = currentUser.isAdmin() ? navColors :
             new Color[]{navColors[0], navColors[1], navColors[2], navColors[3]};
-        
+
         for (int i = 0; i < titles.length; i++) {
             navItems[i] = createNavItem(titles[i], colors[i], i);
             navPanel.add(navItems[i]);
@@ -168,13 +169,13 @@ public class MainFrame extends JFrame {
     
     private void switchPanel(int index) {
         selectedIndex = index;
-        
+
         // 更新导航样式
-        String[] titles = currentUser.isAdmin() ? navTitles : 
+        String[] titles = currentUser.isAdmin() ? navTitles :
             new String[]{"桥梁卡片", "初始检查", "定期检查", "数据统计"};
-        Color[] colors = currentUser.isAdmin() ? navColors : 
+        Color[] colors = currentUser.isAdmin() ? navColors :
             new Color[]{navColors[0], navColors[1], navColors[2], navColors[3]};
-        
+
         for (int i = 0; i < navItems.length; i++) {
             if (i == index) {
                 navItems[i].setBackground(new Color(51, 65, 85));
@@ -191,7 +192,7 @@ public class MainFrame extends JFrame {
                 ((JPanel)navItems[i].getComponent(0)).setOpaque(false);
             }
         }
-        
+
         // 切换内容面板
         contentPanel.removeAll();
         switch (index) {
@@ -200,6 +201,7 @@ public class MainFrame extends JFrame {
             case 2: contentPanel.add(new BridgeRegularCheckPanel(), BorderLayout.CENTER); break;
             case 3: contentPanel.add(new StatisticsPanel(), BorderLayout.CENTER); break;
             case 4: contentPanel.add(new UserManagePanel(), BorderLayout.CENTER); break;
+            case 5: contentPanel.add(new SystemMaintenancePanel(), BorderLayout.CENTER); break;
         }
         contentPanel.revalidate();
         contentPanel.repaint();

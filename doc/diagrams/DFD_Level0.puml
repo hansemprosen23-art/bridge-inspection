@@ -1,0 +1,47 @@
+@startuml 公路桥梁检查系统数据流图-顶层
+
+!define process(x) rectangle x
+!define datastore(x) database x
+!define external(x) actor x
+
+skinparam rectangle {
+    BackgroundColor #E3F2FD
+    BorderColor #1565C0
+}
+
+skinparam database {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+}
+
+skinparam actor {
+    BackgroundColor #E8F5E9
+    BorderColor #2E7D32
+}
+
+title 公路桥梁初始检查信息系统 - 顶层数据流图（DFD 0层）
+
+external(管理员) as Admin
+external(检查员) as Inspector
+external(数据库) as DB
+
+process("公路桥梁初始检查信息系统") as System
+
+Admin --> System : 用户管理指令\n桥梁管理指令\n系统维护指令
+Inspector --> System : 检查记录数据\n查询请求
+System --> Admin : 管理结果\n统计报表
+System --> Inspector : 查询结果\n检查记录
+System --> DB : SQL操作\n(增删改查)
+DB --> System : 数据结果
+
+note right of System
+    主要功能:
+    1. 用户认证与权限管理
+    2. 桥梁基本信息管理
+    3. 初始检查记录管理
+    4. 定期检查与BCI计算
+    5. 统计查询与报表导出
+    6. 数据备份与恢复
+end note
+
+@enduml

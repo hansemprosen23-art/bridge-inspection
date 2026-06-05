@@ -1,0 +1,123 @@
+@startuml 公路桥梁检查系统E-R图
+
+!define table(x) class x << (T,#FFAAAA) >>
+!define pk(x) <u>x</u>
+!define fk(x) #x#
+
+skinparam class {
+    BackgroundColor White
+    ArrowColor #666666
+    BorderColor #333333
+}
+
+title 公路桥梁初始检查信息系统 - E-R图（概念模型）
+
+table(用户) {
+    pk(id): INT
+    username: NVARCHAR(50)
+    password: NVARCHAR(200)
+    real_name: NVARCHAR(50)
+    role: NVARCHAR(20)
+    phone: NVARCHAR(20)
+    create_time: DATETIME
+}
+
+table(桥梁) {
+    pk(id): INT
+    bridge_no: NVARCHAR(50)
+    bridge_name: NVARCHAR(100)
+    route_name: NVARCHAR(100)
+    route_grade: NVARCHAR(20)
+    bridge_type: NVARCHAR(50)
+    structure_type: NVARCHAR(50)
+    span_combination: NVARCHAR(100)
+    total_length: DECIMAL
+    total_width: DECIMAL
+    longitude: NVARCHAR(50)
+    latitude: NVARCHAR(50)
+    photo_front: NVARCHAR(255)
+    photo_left: NVARCHAR(255)
+    photo_right: NVARCHAR(255)
+    tech_status: INT
+    check_level: NVARCHAR(10)
+    create_time: DATETIME
+}
+
+table(初始检查记录) {
+    pk(id): INT
+    fk(bridge_id): INT
+    check_no: NVARCHAR(50)
+    check_date: DATE
+    checker: NVARCHAR(50)
+    weather: NVARCHAR(20)
+    temperature: NVARCHAR(20)
+    deck_condition: NVARCHAR(20)
+    superstructure_condition: NVARCHAR(20)
+    substructure_condition: NVARCHAR(20)
+    accessory_condition: NVARCHAR(20)
+    defect_desc: NVARCHAR(MAX)
+    conclusion: NVARCHAR(500)
+    next_check_date: DATE
+}
+
+table(定期检查记录) {
+    pk(id): INT
+    fk(bridge_id): INT
+    check_no: NVARCHAR(50)
+    check_date: DATE
+    checker: NVARCHAR(50)
+    weather: NVARCHAR(20)
+    temperature: NVARCHAR(20)
+    check_type: NVARCHAR(20)
+    deck_score: INT
+    superstructure_score: INT
+    substructure_score: INT
+    accessory_score: INT
+    bci: DECIMAL(5,2)
+    tech_status: NVARCHAR(10)
+    defect_desc: NVARCHAR(MAX)
+    maintenance_suggest: NVARCHAR(MAX)
+    next_check_date: DATE
+}
+
+table(部件评分明细) {
+    pk(id): INT
+    fk(regular_check_id): INT
+    category: NVARCHAR(20)
+    component_name: NVARCHAR(50)
+    score: DECIMAL(5,2)
+    weight: DECIMAL(5,3)
+    defect_desc: NVARCHAR(MAX)
+    deduct_reason: NVARCHAR(500)
+}
+
+' 关系定义
+用户 "1" -- "0..*" 初始检查记录 : 执行 >
+用户 "1" -- "0..*" 定期检查记录 : 执行 >
+桥梁 "1" -- "0..*" 初始检查记录 : 拥有 >
+桥梁 "1" -- "0..*" 定期检查记录 : 拥有 >
+定期检查记录 "1" -- "0..*" 部件评分明细 : 包含 >
+
+note right of 桥梁
+    桥梁类型:
+    - 梁式桥
+    - 拱桥
+    - 斜拉桥
+    - 悬索桥
+    - 刚架拱桥
+end note
+
+note right of 定期检查记录
+    BCI计算:
+    BCI = BCI₁×0.15 + BCI₂×0.35
+        + BCI₃×0.35 + BCI₄×0.15
+    按JTG 5120-2021规范
+end note
+
+note right of 用户
+    角色:
+    - admin (管理员)
+    - inspector (检查员)
+end note
+
+@enduml

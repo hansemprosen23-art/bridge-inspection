@@ -3,6 +3,7 @@ package ui;
 import entity.User;
 import service.UserService;
 import ui.common.*;
+import util.Logger;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -212,7 +213,8 @@ public class UserManagePanel extends JPanel {
         user.setPhone(phoneField.getText().trim());
 
         if (UserService.getInstance().addUser(user)) {
-            JOptionPane.showMessageDialog(this, "添加成功！");
+            JOptionPane.showMessageDialog(this, "添加成功！密码已自动加密存储。");
+            Logger.info("管理员添加用户: " + username);
             loadData();
             clearForm();
         } else {
@@ -264,8 +266,9 @@ public class UserManagePanel extends JPanel {
         }
         String newPwd = JOptionPane.showInputDialog(this, "请输入新密码:");
         if (newPwd != null && !newPwd.trim().isEmpty()) {
-            if (new dao.UserDaoImpl().updatePassword(selectedId, newPwd.trim())) {
-                JOptionPane.showMessageDialog(this, "密码重置成功！");
+            if (UserService.getInstance().resetPassword(selectedId, newPwd.trim())) {
+                JOptionPane.showMessageDialog(this, "密码重置成功！新密码已加密存储。");
+                Logger.info("管理员重置用户密码 ID=" + selectedId);
             } else {
                 JOptionPane.showMessageDialog(this, "密码重置失败！", "错误", JOptionPane.ERROR_MESSAGE);
             }
