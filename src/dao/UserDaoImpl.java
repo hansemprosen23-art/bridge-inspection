@@ -2,6 +2,7 @@ package dao;
 
 import entity.User;
 import util.DBUtil;
+import util.Logger;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,13 +24,13 @@ public class UserDaoImpl implements UserDao {
                 return mapUser(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按用户名查询用户失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return null;
     }
-    
+
     @Override
     public User findById(int id) {
         String sql = "SELECT * FROM [user] WHERE id = ?";
@@ -45,13 +46,13 @@ public class UserDaoImpl implements UserDao {
                 return mapUser(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按ID查询用户失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return null;
     }
-    
+
     @Override
     public List<User> findAll() {
         String sql = "SELECT * FROM [user] ORDER BY id";
@@ -67,13 +68,13 @@ public class UserDaoImpl implements UserDao {
                 list.add(mapUser(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("查询所有用户失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public boolean add(User user) {
         String sql = "INSERT INTO [user] (username, password, real_name, role, phone) VALUES (?, ?, ?, ?, ?)";
@@ -89,13 +90,13 @@ public class UserDaoImpl implements UserDao {
             pstmt.setString(5, user.getPhone());
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("添加用户失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public boolean update(User user) {
         String sql = "UPDATE [user] SET real_name=?, role=?, phone=? WHERE id=?";
@@ -110,13 +111,13 @@ public class UserDaoImpl implements UserDao {
             pstmt.setInt(4, user.getId());
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("更新用户失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public boolean delete(int id) {
         String sql = "DELETE FROM [user] WHERE id=?";
@@ -128,13 +129,13 @@ public class UserDaoImpl implements UserDao {
             pstmt.setInt(1, id);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("删除用户失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public boolean updatePassword(int id, String newPassword) {
         String sql = "UPDATE [user] SET password=? WHERE id=?";
@@ -147,7 +148,7 @@ public class UserDaoImpl implements UserDao {
             pstmt.setInt(2, id);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("更新密码失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }

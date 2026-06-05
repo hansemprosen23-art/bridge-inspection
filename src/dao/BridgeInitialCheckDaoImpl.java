@@ -2,6 +2,7 @@ package dao;
 
 import entity.BridgeInitialCheck;
 import util.DBUtil;
+import util.Logger;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,13 +22,13 @@ public class BridgeInitialCheckDaoImpl implements BridgeInitialCheckDao {
             setParams(pstmt, check);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("添加初始检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public boolean update(BridgeInitialCheck check) {
         String sql = "UPDATE bridge_initial_check SET bridge_id=?, check_no=?, check_date=?, checker=?, weather=?, " +
@@ -42,13 +43,13 @@ public class BridgeInitialCheckDaoImpl implements BridgeInitialCheckDao {
             pstmt.setInt(16, check.getId());
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("更新初始检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public boolean delete(int id) {
         String sql = "DELETE FROM bridge_initial_check WHERE id=?";
@@ -60,13 +61,13 @@ public class BridgeInitialCheckDaoImpl implements BridgeInitialCheckDao {
             pstmt.setInt(1, id);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("删除初始检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public BridgeInitialCheck findById(int id) {
         String sql = "SELECT c.*, b.bridge_name FROM bridge_initial_check c LEFT JOIN bridge b ON c.bridge_id=b.id WHERE c.id=?";
@@ -82,13 +83,13 @@ public class BridgeInitialCheckDaoImpl implements BridgeInitialCheckDao {
                 return mapCheck(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("查询初始检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return null;
     }
-    
+
     @Override
     public List<BridgeInitialCheck> findAll() {
         String sql = "SELECT c.*, b.bridge_name FROM bridge_initial_check c LEFT JOIN bridge b ON c.bridge_id=b.id ORDER BY c.check_date DESC";
@@ -104,13 +105,13 @@ public class BridgeInitialCheckDaoImpl implements BridgeInitialCheckDao {
                 list.add(mapCheck(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("查询所有初始检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public List<BridgeInitialCheck> findByBridgeId(int bridgeId) {
         String sql = "SELECT c.*, b.bridge_name FROM bridge_initial_check c LEFT JOIN bridge b ON c.bridge_id=b.id WHERE c.bridge_id=? ORDER BY c.check_date DESC";
@@ -127,13 +128,13 @@ public class BridgeInitialCheckDaoImpl implements BridgeInitialCheckDao {
                 list.add(mapCheck(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按桥梁ID查询初始检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public List<BridgeInitialCheck> findByBridgeName(String bridgeName) {
         String sql = "SELECT c.*, b.bridge_name FROM bridge_initial_check c LEFT JOIN bridge b ON c.bridge_id=b.id WHERE b.bridge_name LIKE ? ORDER BY c.check_date DESC";
@@ -150,13 +151,13 @@ public class BridgeInitialCheckDaoImpl implements BridgeInitialCheckDao {
                 list.add(mapCheck(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按桥梁名称查询初始检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public List<BridgeInitialCheck> findByDateRange(String startDate, String endDate) {
         String sql = "SELECT c.*, b.bridge_name FROM bridge_initial_check c LEFT JOIN bridge b ON c.bridge_id=b.id WHERE c.check_date BETWEEN ? AND ? ORDER BY c.check_date DESC";
@@ -174,13 +175,13 @@ public class BridgeInitialCheckDaoImpl implements BridgeInitialCheckDao {
                 list.add(mapCheck(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按日期范围查询初始检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public int count() {
         String sql = "SELECT COUNT(*) FROM bridge_initial_check";
@@ -195,7 +196,7 @@ public class BridgeInitialCheckDaoImpl implements BridgeInitialCheckDao {
                 return rs.getInt(1);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("统计初始检查记录数量失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }

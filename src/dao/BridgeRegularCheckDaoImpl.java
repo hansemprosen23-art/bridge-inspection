@@ -2,6 +2,7 @@ package dao;
 
 import entity.BridgeRegularCheck;
 import util.DBUtil;
+import util.Logger;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,13 +23,13 @@ public class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao {
             setParams(pstmt, check);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("添加定期检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public boolean update(BridgeRegularCheck check) {
         String sql = "UPDATE bridge_regular_check SET bridge_id=?, check_no=?, check_date=?, checker=?, weather=?, " +
@@ -44,13 +45,13 @@ public class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao {
             pstmt.setInt(19, check.getId());
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("更新定期检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public boolean delete(int id) {
         String sql = "DELETE FROM bridge_regular_check WHERE id=?";
@@ -62,13 +63,13 @@ public class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao {
             pstmt.setInt(1, id);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("删除定期检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public BridgeRegularCheck findById(int id) {
         String sql = "SELECT c.*, b.bridge_name FROM bridge_regular_check c LEFT JOIN bridge b ON c.bridge_id=b.id WHERE c.id=?";
@@ -84,13 +85,13 @@ public class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao {
                 return mapCheck(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("查询定期检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return null;
     }
-    
+
     @Override
     public List<BridgeRegularCheck> findAll() {
         String sql = "SELECT c.*, b.bridge_name FROM bridge_regular_check c LEFT JOIN bridge b ON c.bridge_id=b.id ORDER BY c.check_date DESC";
@@ -106,13 +107,13 @@ public class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao {
                 list.add(mapCheck(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("查询所有定期检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public List<BridgeRegularCheck> findByBridgeId(int bridgeId) {
         String sql = "SELECT c.*, b.bridge_name FROM bridge_regular_check c LEFT JOIN bridge b ON c.bridge_id=b.id WHERE c.bridge_id=? ORDER BY c.check_date DESC";
@@ -129,13 +130,13 @@ public class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao {
                 list.add(mapCheck(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按桥梁ID查询定期检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public List<BridgeRegularCheck> findByBridgeName(String bridgeName) {
         String sql = "SELECT c.*, b.bridge_name FROM bridge_regular_check c LEFT JOIN bridge b ON c.bridge_id=b.id WHERE b.bridge_name LIKE ? ORDER BY c.check_date DESC";
@@ -152,13 +153,13 @@ public class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao {
                 list.add(mapCheck(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按桥梁名称查询定期检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public List<BridgeRegularCheck> findByTechStatus(String techStatus) {
         String sql = "SELECT c.*, b.bridge_name FROM bridge_regular_check c LEFT JOIN bridge b ON c.bridge_id=b.id WHERE c.tech_status=? ORDER BY c.check_date DESC";
@@ -175,13 +176,13 @@ public class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao {
                 list.add(mapCheck(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按技术状况查询定期检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public List<BridgeRegularCheck> findByDateRange(String startDate, String endDate) {
         String sql = "SELECT c.*, b.bridge_name FROM bridge_regular_check c LEFT JOIN bridge b ON c.bridge_id=b.id WHERE c.check_date BETWEEN ? AND ? ORDER BY c.check_date DESC";
@@ -199,13 +200,13 @@ public class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao {
                 list.add(mapCheck(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按日期范围查询定期检查记录失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public int count() {
         String sql = "SELECT COUNT(*) FROM bridge_regular_check";
@@ -220,7 +221,7 @@ public class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao {
                 return rs.getInt(1);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("统计定期检查记录数量失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }

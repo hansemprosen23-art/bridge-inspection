@@ -2,6 +2,7 @@ package dao;
 
 import entity.Bridge;
 import util.DBUtil;
+import util.Logger;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,13 +23,13 @@ public class BridgeDaoImpl implements BridgeDao {
             setParams(pstmt, bridge);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("添加桥梁失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public boolean update(Bridge bridge) {
         String sql = "UPDATE bridge SET bridge_no=?, bridge_name=?, route_name=?, route_grade=?, bridge_type=?, " +
@@ -45,13 +46,13 @@ public class BridgeDaoImpl implements BridgeDao {
             pstmt.setInt(26, bridge.getId());
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("更新桥梁失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public boolean delete(int id) {
         String sql = "DELETE FROM bridge WHERE id=?";
@@ -63,13 +64,13 @@ public class BridgeDaoImpl implements BridgeDao {
             pstmt.setInt(1, id);
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("删除桥梁失败", e);
         } finally {
             DBUtil.close(conn, pstmt);
         }
         return false;
     }
-    
+
     @Override
     public Bridge findById(int id) {
         String sql = "SELECT * FROM bridge WHERE id=?";
@@ -85,13 +86,13 @@ public class BridgeDaoImpl implements BridgeDao {
                 return mapBridge(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("查询桥梁失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return null;
     }
-    
+
     @Override
     public Bridge findByBridgeNo(String bridgeNo) {
         String sql = "SELECT * FROM bridge WHERE bridge_no=?";
@@ -107,13 +108,13 @@ public class BridgeDaoImpl implements BridgeDao {
                 return mapBridge(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按编号查询桥梁失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return null;
     }
-    
+
     @Override
     public List<Bridge> findAll() {
         String sql = "SELECT * FROM bridge ORDER BY id";
@@ -129,13 +130,13 @@ public class BridgeDaoImpl implements BridgeDao {
                 list.add(mapBridge(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("查询所有桥梁失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public List<Bridge> findByName(String name) {
         String sql = "SELECT * FROM bridge WHERE bridge_name LIKE ? ORDER BY id";
@@ -152,13 +153,13 @@ public class BridgeDaoImpl implements BridgeDao {
                 list.add(mapBridge(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按名称查询桥梁失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public List<Bridge> findByType(String type) {
         String sql = "SELECT * FROM bridge WHERE bridge_type=? ORDER BY id";
@@ -175,13 +176,13 @@ public class BridgeDaoImpl implements BridgeDao {
                 list.add(mapBridge(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按类型查询桥梁失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public List<Bridge> findByLevel(String level) {
         String sql = "SELECT * FROM bridge WHERE check_level=? ORDER BY id";
@@ -198,13 +199,13 @@ public class BridgeDaoImpl implements BridgeDao {
                 list.add(mapBridge(rs));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("按等级查询桥梁失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
         return list;
     }
-    
+
     @Override
     public int count() {
         String sql = "SELECT COUNT(*) FROM bridge";
@@ -219,7 +220,7 @@ public class BridgeDaoImpl implements BridgeDao {
                 return rs.getInt(1);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("统计桥梁数量失败", e);
         } finally {
             DBUtil.close(conn, pstmt, rs);
         }
