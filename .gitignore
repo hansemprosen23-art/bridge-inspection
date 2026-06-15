@@ -1,0 +1,19 @@
+# 编译输出
+out/
+*.class
+
+# IDE
+.idea/
+*.iml
+
+# 日志与运行时数据
+logs/
+photos/
+*.log
+
+# 数据库文件（如果以后使用 SQLite）
+*.db
+
+# 操作系统文件
+.DS_Store
+Thumbs.db

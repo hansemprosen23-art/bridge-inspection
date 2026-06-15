@@ -4,6 +4,7 @@ import entity.Bridge;
 import service.BridgeService;
 import service.ReportService;
 import ui.common.*;
+import util.CsvBridgeImporter;
 import util.Logger;
 import util.ValidationUtil;
 
@@ -24,7 +25,7 @@ public class BridgeManagePanel extends JPanel {
     private JTable table;
     private DefaultTableModel tableModel;
     private JTextField searchField;
-    private RoundedButton addBtn, editBtn, deleteBtn, mapBtn, exportBtn;
+    private RoundedButton addBtn, editBtn, deleteBtn, mapBtn, exportBtn, importBtn;
     private OutlineButton searchBtn, refreshBtn;
 
     private JTextField bridgeNoField, bridgeNameField, routeNameField, routeGradeField;
@@ -35,6 +36,7 @@ public class BridgeManagePanel extends JPanel {
     private JComboBox<String> checkLevelBox;
     private JTextField techStatusField, maintenanceLengthField, longitudeField, latitudeField;
     private JTextArea remarkArea;
+    private PhotoUploadPanel photoUploadPanel;
 
     private List<Bridge> currentList;
     private int selectedId = -1;
@@ -98,14 +100,16 @@ public class BridgeManagePanel extends JPanel {
         deleteBtn = new RoundedButton("删除", ThemeColors.DANGER);
         mapBtn = new RoundedButton("地图定位", new Color(123, 31, 162));
         exportBtn = new RoundedButton("导出报表", new Color(0, 131, 143));
+        importBtn = new RoundedButton("导入CSV", new Color(255, 111, 0));
 
         panel.add(new JLabel("搜索:"));
         panel.add(searchField);
         panel.add(searchBtn);
         panel.add(refreshBtn);
         panel.add(Box.createHorizontalStrut(10));
-        panel.add(mapBtn);
+        panel.add(importBtn);
         panel.add(exportBtn);
+        panel.add(mapBtn);
         panel.add(Box.createHorizontalStrut(10));
         panel.add(addBtn);
         panel.add(editBtn);
@@ -122,6 +126,7 @@ public class BridgeManagePanel extends JPanel {
         deleteBtn.addActionListener(e -> doDelete());
         mapBtn.addActionListener(e -> doShowMap());
         exportBtn.addActionListener(e -> doExport());
+        importBtn.addActionListener(e -> doImport());
 
         add(panel, BorderLayout.CENTER);
     }
@@ -363,6 +368,14 @@ public class BridgeManagePanel extends JPanel {
         remarkScroll.setBorder(BorderFactory.createLineBorder(ThemeColors.BORDER));
         card.add(remarkScroll, gbc);
 
+        // 照片上传
+        gbc.gridy = 13;
+        gbc.gridx = 0;
+        gbc.gridwidth = 4;
+        gbc.weightx = 1;
+        photoUploadPanel = new PhotoUploadPanel();
+        card.add(photoUploadPanel, gbc);
+
         JScrollPane scrollPane = new JScrollPane(card);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setOpaque(false);
@@ -469,6 +482,42 @@ public class BridgeManagePanel extends JPanel {
         }
     }
 
+    private void doImport() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("CSV文件", "csv"));
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            String path = file.getAbsolutePath();
+
+            List<Bridge> bridges = CsvBridgeImporter.importFromCSV(path);
+            if (bridges.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "未从CSV中读取到有效数据！", "提示", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            int successCount = 0;
+            int failCount = 0;
+            for (Bridge b : bridges) {
+                // 检查桥梁编号是否已存在
+                if (BridgeService.getInstance().getBridgeByNo(b.getBridgeNo()) != null) {
+                    failCount++;
+                    continue;
+                }
+                if (BridgeService.getInstance().addBridge(b)) {
+                    successCount++;
+                } else {
+                    failCount++;
+                }
+            }
+
+            JOptionPane.showMessageDialog(this,
+                "CSV导入完成！\n成功导入: " + successCount + " 条\n跳过/失败: " + failCount + " 条",
+                "导入结果", JOptionPane.INFORMATION_MESSAGE);
+            loadData();
+            clearForm();
+        }
+    }
+
     private Bridge getFormData() {
         String bridgeNo = bridgeNoField.getText().trim();
         String bridgeName = bridgeNameField.getText().trim();
@@ -536,6 +585,9 @@ public class BridgeManagePanel extends JPanel {
         b.setLongitude(lon);
         b.setLatitude(lat);
         b.setRemark(remarkArea.getText().trim());
+        b.setPhotoFront(photoUploadPanel.getFrontPath());
+        b.setPhotoLeft(photoUploadPanel.getLeftPath());
+        b.setPhotoRight(photoUploadPanel.getRightPath());
         return b;
     }
 
@@ -565,6 +617,7 @@ public class BridgeManagePanel extends JPanel {
         longitudeField.setText(b.getLongitude());
         latitudeField.setText(b.getLatitude());
         remarkArea.setText(b.getRemark());
+        photoUploadPanel.loadPhotos(b.getPhotoFront(), b.getPhotoLeft(), b.getPhotoRight());
     }
 
     private void clearForm() {
@@ -594,5 +647,6 @@ public class BridgeManagePanel extends JPanel {
         longitudeField.setText("");
         latitudeField.setText("");
         remarkArea.setText("");
+        photoUploadPanel.clear();
     }
 }

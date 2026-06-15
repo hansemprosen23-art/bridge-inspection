@@ -1,6 +1,7 @@
 package ui;
 
 import entity.Bridge;
+import entity.BridgeComponentScore;
 import entity.BridgeRegularCheck;
 import service.BridgeRegularCheckService;
 import service.BridgeService;
@@ -16,6 +17,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +31,7 @@ public class BridgeRegularCheckPanel extends JPanel {
     private JTable table;
     private DefaultTableModel tableModel;
     private JTextField searchField;
-    private RoundedButton addBtn, editBtn, deleteBtn, calcBtn, templateBtn, reportBtn;
+    private RoundedButton addBtn, editBtn, deleteBtn, calcBtn, componentScoreBtn, templateBtn, reportBtn;
     private OutlineButton searchBtn, refreshBtn;
 
     private JComboBox<String> bridgeCombo;
@@ -44,6 +46,8 @@ public class BridgeRegularCheckPanel extends JPanel {
 
     private List<BridgeRegularCheck> currentList;
     private int selectedId = -1;
+    private List<BridgeComponentScore> pendingComponentScores = new ArrayList<>();
+    private String pendingBridgeType = "梁式桥";
 
     public BridgeRegularCheckPanel() {
         setLayout(new BorderLayout(12, 12));
@@ -104,6 +108,7 @@ public class BridgeRegularCheckPanel extends JPanel {
         editBtn = new RoundedButton("修改", ThemeColors.INFO);
         deleteBtn = new RoundedButton("删除", ThemeColors.DANGER);
         calcBtn = new RoundedButton("计算BCI", new Color(123, 31, 162));
+        componentScoreBtn = new RoundedButton("部件评分", new Color(63, 81, 181));
         templateBtn = new RoundedButton("检查模板", new Color(0, 131, 143));
         reportBtn = new RoundedButton("导出报告", new Color(0, 105, 92));
 
@@ -113,6 +118,7 @@ public class BridgeRegularCheckPanel extends JPanel {
         panel.add(refreshBtn);
         panel.add(Box.createHorizontalStrut(10));
         panel.add(templateBtn);
+        panel.add(componentScoreBtn);
         panel.add(calcBtn);
         panel.add(reportBtn);
         panel.add(Box.createHorizontalStrut(10));
@@ -130,6 +136,7 @@ public class BridgeRegularCheckPanel extends JPanel {
         editBtn.addActionListener(e -> doEdit());
         deleteBtn.addActionListener(e -> doDelete());
         calcBtn.addActionListener(e -> doCalcBCI());
+        componentScoreBtn.addActionListener(e -> doComponentScore());
         templateBtn.addActionListener(e -> doShowTemplate());
         reportBtn.addActionListener(e -> doExportReport());
 
@@ -344,6 +351,37 @@ public class BridgeRegularCheckPanel extends JPanel {
         refreshTable();
     }
 
+    private void doComponentScore() {
+        String bridgeItem = (String) bridgeCombo.getSelectedItem();
+        if (bridgeItem == null) {
+            JOptionPane.showMessageDialog(this, "请先选择桥梁！", "提示", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int bridgeId = Integer.parseInt(bridgeItem.split("-")[0]);
+        Bridge bridge = BridgeService.getInstance().getBridgeById(bridgeId);
+        String bridgeType = (bridge != null && bridge.getBridgeType() != null) ? bridge.getBridgeType() : "梁式桥";
+        pendingBridgeType = bridgeType;
+
+        ComponentScoreDialog dialog = new ComponentScoreDialog(SwingUtilities.getWindowAncestor(this), bridgeType);
+        dialog.setVisible(true);
+
+        if (dialog.isConfirmed()) {
+            ComponentScoreDialog.Result result = dialog.getResult();
+            if (result != null) {
+                pendingComponentScores = result.componentScores;
+                deckScoreField.setText(String.valueOf(result.deckBci));
+                superstructureScoreField.setText(String.valueOf(result.superBci));
+                substructureScoreField.setText(String.valueOf(result.subBci));
+                accessoryScoreField.setText(String.valueOf(result.accessoryBci));
+                bciField.setText(String.format("%.2f", result.bci));
+                techStatusBox.setSelectedItem(result.techStatus);
+                JOptionPane.showMessageDialog(this,
+                    String.format("已按部件评分计算 BCI\n全桥 BCI: %.2f\n技术状况: %s", result.bci, result.techStatus),
+                    "计算完成", JOptionPane.INFORMATION_MESSAGE);
+            }
+        }
+    }
+
     private void doCalcBCI() {
         try {
             int deck = Integer.parseInt(deckScoreField.getText().trim().isEmpty() ? "0" : deckScoreField.getText().trim());
@@ -432,7 +470,7 @@ public class BridgeRegularCheckPanel extends JPanel {
     private void doAdd() {
         BridgeRegularCheck c = getFormData();
         if (c == null) return;
-        if (BridgeRegularCheckService.getInstance().addCheck(c)) {
+        if (BridgeRegularCheckService.getInstance().addCheck(c, pendingComponentScores)) {
             JOptionPane.showMessageDialog(this, "添加成功！");
             loadData();
             clearForm();
@@ -566,6 +604,8 @@ public class BridgeRegularCheckPanel extends JPanel {
 
     private void clearForm() {
         selectedId = -1;
+        pendingComponentScores = new ArrayList<>();
+        pendingBridgeType = "梁式桥";
         if (bridgeCombo.getItemCount() > 0) bridgeCombo.setSelectedIndex(0);
         checkNoField.setText("");
         checkDateField.setText("");

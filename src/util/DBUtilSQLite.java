@@ -6,32 +6,28 @@ import java.sql.*;
  * SQLite数据库工具类（备用方案）
  * 无需安装数据库，零配置，单文件存储
  * 适合课程设计快速演示
- * 
- * 使用方法：
- * 1. 将 sqlite-jdbc-xxx.jar 添加到项目依赖
- * 2. 在 LoginFrame.java 中把 DBUtil 改为 DBUtilSQLite（或直接用本类）
  */
 public class DBUtilSQLite {
-    
+
     private static final String DRIVER = "org.sqlite.JDBC";
     private static final String URL = "jdbc:sqlite:bridge_inspection.db";
-    
+
     static {
         try {
             Class.forName(DRIVER);
         } catch (ClassNotFoundException e) {
-            e.printStackTrace();
+            Logger.error("SQLite JDBC驱动加载失败", e);
             throw new RuntimeException("SQLite JDBC驱动加载失败，请确保sqlite-jdbc jar包已添加到项目中: " + e.getMessage());
         }
     }
-    
+
     /**
      * 获取数据库连接
      */
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL);
     }
-    
+
     /**
      * 关闭连接资源
      */
@@ -41,14 +37,14 @@ public class DBUtilSQLite {
             if (stmt != null) stmt.close();
             if (conn != null) conn.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("关闭SQLite数据库资源失败", e);
         }
     }
-    
+
     public static void close(Connection conn, Statement stmt) {
         close(conn, stmt, null);
     }
-    
+
     /**
      * 测试数据库连接
      */
@@ -58,13 +54,13 @@ public class DBUtilSQLite {
             conn = getConnection();
             return conn != null && !conn.isClosed();
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("SQLite数据库连接测试失败", e);
             return false;
         } finally {
             close(conn, null);
         }
     }
-    
+
     /**
      * 初始化数据库表结构（首次运行时调用）
      */
@@ -185,9 +181,9 @@ public class DBUtilSQLite {
             for (String sql : sqls) {
                 stmt.execute(sql);
             }
-            System.out.println("SQLite数据库初始化完成");
+            Logger.info("SQLite数据库初始化完成");
         } catch (SQLException e) {
-            e.printStackTrace();
+            Logger.error("SQLite数据库初始化失败", e);
         } finally {
             close(conn, stmt);
         }

@@ -31,6 +31,49 @@ public class BridgeRegularCheckDaoImpl implements BridgeRegularCheckDao {
     }
 
     @Override
+    public boolean add(Connection conn, BridgeRegularCheck check) {
+        String sql = "INSERT INTO bridge_regular_check (bridge_id, check_no, check_date, checker, weather, temperature, " +
+                "check_type, deck_score, superstructure_score, substructure_score, accessory_score, bci, tech_status, " +
+                "defect_desc, maintenance_suggest, limitation_suggest, check_conclusion, next_check_date) " +
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        PreparedStatement pstmt = null;
+        try {
+            pstmt = conn.prepareStatement(sql);
+            setParams(pstmt, check);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            Logger.error("添加定期检查记录失败", e);
+        } finally {
+            DBUtil.close(null, pstmt);
+        }
+        return false;
+    }
+
+    @Override
+    public int addAndGetId(Connection conn, BridgeRegularCheck check) {
+        String sql = "INSERT INTO bridge_regular_check (bridge_id, check_no, check_date, checker, weather, temperature, " +
+                "check_type, deck_score, superstructure_score, substructure_score, accessory_score, bci, tech_status, " +
+                "defect_desc, maintenance_suggest, limitation_suggest, check_conclusion, next_check_date) " +
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        try {
+            pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            setParams(pstmt, check);
+            pstmt.executeUpdate();
+            rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            Logger.error("添加定期检查记录并获取主键失败", e);
+        } finally {
+            DBUtil.close(null, pstmt, rs);
+        }
+        return -1;
+    }
+
+    @Override
     public boolean update(BridgeRegularCheck check) {
         String sql = "UPDATE bridge_regular_check SET bridge_id=?, check_no=?, check_date=?, checker=?, weather=?, " +
                 "temperature=?, check_type=?, deck_score=?, superstructure_score=?, substructure_score=?, " +

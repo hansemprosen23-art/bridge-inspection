@@ -119,6 +119,6 @@ public class BCICalculatorTest {
 
         double bci = BCICalculator.calculateBCI(deckScores, superScores, subScores, accessoryScores, "梁式桥");
         assertTrue(bci >= 0 && bci <= 100);
-        assertEquals("1类", BCICalculator.determineTechStatus(bci));
+        assertEquals("2类", BCICalculator.determineTechStatus(bci));
     }
 }

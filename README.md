@@ -19,6 +19,7 @@
 - **界面框架**：Java Swing
 - **数据库**：SQL Server 2019+
 - **JDBC 驱动**：mssql-jdbc-12.8.1.jre11.jar
+- **测试框架**：JUnit 4.13.2
 - **IDE**：IntelliJ IDEA
 - **版本控制**：Git
 
@@ -59,7 +60,7 @@ private static final String URL = "jdbc:sqlserver://localhost:1433;databaseName=
 1. 打开 IDEA → `File` → `Project Structure`（`Ctrl+Alt+Shift+S`）
 2. 左侧选择 `Modules` → 你的项目 → `Dependencies` 标签页
 3. 点击右侧 `+` 号 → `JARs or Directories...`
-4. 选择：`BridgeInspectionSystem/lib/mssql-jdbc-12.8.1.jre11.jar`
+4. 选择：`BridgeInspectionSystem/lib/` 下的所有 jar 包
 5. 点击 `Apply` → `OK`
 6. 右键 `src` 文件夹 → `Mark Directory as` → `Sources Root`
 7. 右键 `test` 文件夹 → `Mark Directory as` → `Test Sources Root`
@@ -93,11 +94,12 @@ private static final String URL = "jdbc:sqlserver://localhost:1433;databaseName=
 ### 新增亮点功能
 - **GIS 地图集成** — 在桥梁管理中点击「地图定位」，可在地图中查看桥梁位置
 - **报告导出** — 支持导出 HTML 格式技术状况评定报告、CSV 格式数据报表
-- **照片上传** — 支持桥梁正面/左侧/右侧照片上传和预览
+- **照片上传** — 支持桥梁正面/左侧/右侧照片上传和预览，已集成到桥梁管理面板
+- **BCI 部件评分对话框** — 在定期检查面板点击「部件评分」，可按桥型录入各部件得分并自动计算 BCI
 - **按桥型分类检查模板** — 梁式桥/拱桥/斜拉桥/悬索桥各有不同部件权重
-- **BCI 规范算法** — 按 JTG 5120-2021 分层加权计算，非简单平均
+- **BCI 规范算法** — 按 JTG 5120-2021 分层加权计算，支持四部总分快速计算或部件级详细评分
 - **数据校验** — 日期格式、经纬度范围、评分范围自动校验
-- **事务控制** — 关键操作使用数据库事务保证数据一致性
+- **事务控制** — 定期检查记录与部件评分明细使用同一数据库连接事务写入，保证数据一致性
 - **日志记录** — 系统自动记录操作日志到 `logs/` 目录
 
 ## 项目结构
@@ -121,20 +123,21 @@ BridgeInspectionSystem/
 │   ├── service/                     # 业务逻辑层 (6个)
 │   │   ├── BridgeService.java
 │   │   ├── BridgeInitialCheckService.java
-│   │   ├── BridgeRegularCheckService.java   # BCI规范算法
+│   │   ├── BridgeRegularCheckService.java   # BCI规范算法+事务控制
 │   │   ├── StatisticsService.java
 │   │   ├── UserService.java                 # 密码加密
 │   │   └── ReportService.java               # 新增：报告导出
-│   ├── ui/                          # 界面层 (10个)
+│   ├── ui/                          # 界面层 (11个)
 │   │   ├── LoginFrame.java
 │   │   ├── MainFrame.java
-│   │   ├── BridgeManagePanel.java           # 新增：地图+导出
+│   │   ├── BridgeManagePanel.java           # 新增：地图+导出+照片上传
 │   │   ├── BridgeInitialCheckPanel.java
-│   │   ├── BridgeRegularCheckPanel.java     # 新增：模板+报告
+│   │   ├── BridgeRegularCheckPanel.java     # 新增：模板+部件评分+报告
 │   │   ├── StatisticsPanel.java
 │   │   ├── UserManagePanel.java
 │   │   ├── MapPreviewFrame.java             # 新增：GIS地图
 │   │   ├── PhotoUploadPanel.java            # 新增：照片上传
+│   │   ├── ComponentScoreDialog.java        # 新增：BCI部件评分对话框
 │   │   └── SystemMaintenancePanel.java      # 新增：系统维护
 │   └── util/                        # 工具类
 │       ├── DBUtil.java              # 数据库工具（含事务控制）
@@ -143,28 +146,20 @@ BridgeInspectionSystem/
 │       ├── Logger.java              # 新增：日志工具
 │       └── ValidationUtil.java      # 新增：数据校验
 ├── test/                            # 单元测试
-│   └── util/
-│       ├── BCICalculatorTest.java
-│       ├── PasswordUtilTest.java
-│       └── ValidationUtilTest.java
+│   ├── util/
+│   │   ├── BCICalculatorTest.java
+│   │   ├── PasswordUtilTest.java
+│   │   └── ValidationUtilTest.java
+│   └── service/
+│       └── BridgeRegularCheckServiceTest.java
 ├── lib/
-│   └── mssql-jdbc-12.8.1.jre11.jar  # SQL Server JDBC 驱动
+│   ├── mssql-jdbc-12.8.1.jre11.jar  # SQL Server JDBC 驱动
+│   ├── junit-4.13.2.jar             # JUnit 测试框架
+│   └── hamcrest-core-1.3.jar        # JUnit 依赖
 ├── sql/
 │   ├── bridge_inspection.sql        # 原始数据库脚本
 │   └── bridge_inspection_v2.sql     # 优化版数据库脚本（推荐使用）
-├── doc/
-│   ├── diagrams/                    # 新增：设计模型图
-│   │   ├── ER_Diagram.puml          # E-R图
-│   │   ├── UseCase_Diagram.puml     # 用例图
-│   │   ├── DFD_Level0.puml          # 顶层数据流图
-│   │   ├── DFD_Level1.puml          # 一层数据流图
-│   │   ├── Class_Diagram.puml       # 类图
-│   │   └── README.md                # 图表使用说明
-│   ├── 团队设计报告.docx
-│   ├── 张子健-个人设计报告.docx
-│   ├── 郑晟-个人设计报告.docx
-│   ├── 谭容昊-个人设计报告.docx
-│   └── 曹城钧-个人设计报告.docx
+├── doc/                             # 设计文档与模型图
 ├── logs/                            # 运行时自动生成：日志目录
 ├── photos/                          # 运行时自动生成：照片目录
 └── README.md
@@ -191,7 +186,22 @@ git merge feature-xxx
 
 ## 单元测试运行
 
-在 IDEA 中：
+### 命令行方式
+
+```bash
+# 编译测试
+javac -encoding UTF-8 -cp "lib/*;out" -d out $(find test -name "*.java")
+
+# 运行测试
+java -cp "lib/*;out" org.junit.runner.JUnitCore \
+  util.BCICalculatorTest \
+  util.PasswordUtilTest \
+  util.ValidationUtilTest \
+  service.BridgeRegularCheckServiceTest
+```
+
+### IDEA 方式
+
 1. 右键 `test/` 目录 → `Run 'All Tests'`
 2. 或右键单个测试文件 → `Run 'xxxTest'`
 
@@ -199,6 +209,7 @@ git merge feature-xxx
 - `BCICalculatorTest` — BCI 计算算法验证
 - `PasswordUtilTest` — 密码加密验证
 - `ValidationUtilTest` — 数据校验验证
+- `BridgeRegularCheckServiceTest` — 服务层 BCI 计算验证
 
 ## 常见问题
 

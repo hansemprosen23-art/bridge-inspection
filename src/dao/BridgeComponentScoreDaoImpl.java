@@ -29,6 +29,22 @@ public class BridgeComponentScoreDaoImpl implements BridgeComponentScoreDao {
     }
 
     @Override
+    public boolean add(Connection conn, BridgeComponentScore score) {
+        String sql = "INSERT INTO bridge_component_score (regular_check_id, category, component_name, score, weight, defect_desc, deduct_reason) VALUES (?,?,?,?,?,?,?)";
+        PreparedStatement pstmt = null;
+        try {
+            pstmt = conn.prepareStatement(sql);
+            setParams(pstmt, score);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            Logger.error("添加部件评分失败", e);
+        } finally {
+            DBUtil.close(null, pstmt);
+        }
+        return false;
+    }
+
+    @Override
     public boolean update(BridgeComponentScore score) {
         String sql = "UPDATE bridge_component_score SET regular_check_id=?, category=?, component_name=?, score=?, weight=?, defect_desc=?, deduct_reason=? WHERE id=?";
         Connection conn = null;

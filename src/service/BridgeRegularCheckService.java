@@ -37,6 +37,7 @@ public class BridgeRegularCheckService {
 
     /**
      * 添加定期检查记录（含部件评分）
+     * 使用同一个数据库连接保证事务原子性
      */
     public boolean addCheck(BridgeRegularCheck check, List<BridgeComponentScore> componentScores) {
         Connection conn = null;
@@ -44,18 +45,21 @@ public class BridgeRegularCheckService {
             conn = util.DBUtil.getConnection();
             conn.setAutoCommit(false);
 
-            boolean success = checkDao.add(check);
-            if (!success) {
+            // 在事务连接上插入定期检查记录并获取自增主键
+            int checkId = checkDao.addAndGetId(conn, check);
+            if (checkId <= 0) {
                 conn.rollback();
                 return false;
             }
 
-            // 获取刚插入的记录ID
-            int checkId = getLatestCheckId(check.getBridgeId(), check.getCheckNo());
-            if (checkId > 0 && componentScores != null) {
+            // 在同一连接上插入部件评分明细
+            if (componentScores != null) {
                 for (BridgeComponentScore score : componentScores) {
                     score.setRegularCheckId(checkId);
-                    componentScoreDao.add(score);
+                    if (!componentScoreDao.add(conn, score)) {
+                        conn.rollback();
+                        return false;
+                    }
                 }
             }
 
@@ -64,10 +68,11 @@ public class BridgeRegularCheckService {
             return true;
         } catch (Exception e) {
             Logger.error("添加定期检查记录失败", e);
-            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { Logger.error("回滚失败", ex); }
+            util.DBUtil.rollback(conn);
             return false;
         } finally {
-            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { /* ignore */ }
+            util.DBUtil.endTransaction(conn);
+            util.DBUtil.close(conn, null);
         }
     }
 
@@ -187,15 +192,5 @@ public class BridgeRegularCheckService {
      */
     public Map<String, Map<String, Double>> getCheckTemplate(String bridgeType) {
         return BCICalculator.getAllComponents(bridgeType);
-    }
-
-    private int getLatestCheckId(int bridgeId, String checkNo) {
-        List<BridgeRegularCheck> list = checkDao.findByBridgeId(bridgeId);
-        for (BridgeRegularCheck c : list) {
-            if (c.getCheckNo().equals(checkNo)) {
-                return c.getId();
-            }
-        }
-        return -1;
     }
 }
