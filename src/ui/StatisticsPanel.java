@@ -11,20 +11,24 @@ import java.util.Map;
  * 数据统计查询面板
  * 负责模块: 曹城钧
  */
-public class StatisticsPanel extends JPanel {
-    
+public class StatisticsPanel extends JPanel implements RefreshablePanel {
+
     private JPanel totalBridgeLabel, totalInitialLabel, totalRegularLabel;
     private JTextArea typeStatArea, levelStatArea, statusStatArea, yearStatArea;
     private RoundedButton refreshBtn;
-    
+    private boolean dataLoaded = false;
+    private LoadingOverlay loadingOverlay;
+
     public StatisticsPanel() {
         setLayout(new BorderLayout(16, 16));
         setBackground(ThemeColors.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        
+
         initSummaryPanel();
         initDetailPanel();
-        refreshData();
+
+        loadingOverlay = new LoadingOverlay();
+        add(loadingOverlay, 0);
     }
     
     private void initSummaryPanel() {
@@ -37,7 +41,20 @@ public class StatisticsPanel extends JPanel {
         
         refreshBtn = new RoundedButton("⟳ 刷新数据", ThemeColors.PRIMARY);
         refreshBtn.setPreferredSize(new Dimension(140, 46));
-        refreshBtn.addActionListener(e -> refreshData());
+        refreshBtn.addActionListener(e -> {
+            setBusy(true);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() {
+                    refreshData();
+                    return null;
+                }
+                @Override
+                protected void done() {
+                    setBusy(false);
+                }
+            }.execute();
+        });
         JPanel btnPanel = new JPanel(new GridBagLayout());
         btnPanel.setOpaque(false);
         btnPanel.add(refreshBtn);
@@ -128,19 +145,37 @@ public class StatisticsPanel extends JPanel {
         return card;
     }
     
+    @Override
+    public void refreshDataIfVisible() {
+        if (dataLoaded) {
+            SwingUtilities.invokeLater(() -> refreshData());
+            return;
+        }
+        dataLoaded = true;
+        refreshData();
+    }
+
+    @Override
+    public void setBusy(boolean busy) {
+        if (busy) {
+            loadingOverlay.showOverlay();
+        } else {
+            loadingOverlay.hideOverlay();
+        }
+    }
+
     private void refreshData() {
-        int totalBridge = StatisticsService.getInstance().getTotalBridges();
-        int totalInitial = StatisticsService.getInstance().getTotalInitialChecks();
-        int totalRegular = StatisticsService.getInstance().getTotalRegularChecks();
-        
-        updateCardValue(totalBridgeLabel, String.valueOf(totalBridge));
-        updateCardValue(totalInitialLabel, String.valueOf(totalInitial));
-        updateCardValue(totalRegularLabel, String.valueOf(totalRegular));
-        
-        typeStatArea.setText(formatMap(StatisticsService.getInstance().countByBridgeType(), " 座"));
-        levelStatArea.setText(formatMap(StatisticsService.getInstance().countByCheckLevel(), " 座"));
-        statusStatArea.setText(formatMap(StatisticsService.getInstance().countByTechStatus(), " 条记录"));
-        yearStatArea.setText(formatMap(StatisticsService.getInstance().countChecksByYear(), " 次检查"));
+        // 使用合并查询，一次数据库连接获取所有统计
+        StatisticsService.StatisticsResult stats = StatisticsService.getInstance().getAllStatistics();
+
+        updateCardValue(totalBridgeLabel, String.valueOf(stats.totalBridges));
+        updateCardValue(totalInitialLabel, String.valueOf(stats.totalInitialChecks));
+        updateCardValue(totalRegularLabel, String.valueOf(stats.totalRegularChecks));
+
+        typeStatArea.setText(formatMap(stats.byBridgeType, " 座"));
+        levelStatArea.setText(formatMap(stats.byCheckLevel, " 座"));
+        statusStatArea.setText(formatMap(stats.byTechStatus, " 条记录"));
+        yearStatArea.setText(formatMap(stats.byYear, " 次检查"));
     }
     
     private void updateCardValue(JPanel card, String value) {

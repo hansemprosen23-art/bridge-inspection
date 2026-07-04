@@ -46,4 +46,14 @@ public class StyledTable extends JTable {
         }
         return c;
     }
+
+    /**
+     * 设置大数据量表格的优化渲染
+     */
+    public void setLargeModel(int rowCount) {
+        if (rowCount > 500) {
+            // 数据量大时关闭部分视觉效果以提升滚动性能
+            setRowHeight(32);
+        }
+    }
 }

@@ -1,9 +1,7 @@
 package ui;
 
 import service.ReportService;
-import ui.common.CardPanel;
-import ui.common.RoundedButton;
-import ui.common.ThemeColors;
+import ui.common.*;
 import util.DBUtil;
 import util.Logger;
 
@@ -18,9 +16,11 @@ import java.util.Date;
  * 系统维护面板
  * 包含：数据备份、数据恢复、查看日志
  */
-public class SystemMaintenancePanel extends JPanel {
+public class SystemMaintenancePanel extends JPanel implements RefreshablePanel {
 
     private JTextArea logArea;
+    private boolean dataLoaded = false;
+    private LoadingOverlay loadingOverlay;
 
     public SystemMaintenancePanel() {
         setLayout(new BorderLayout(12, 12));
@@ -29,6 +29,9 @@ public class SystemMaintenancePanel extends JPanel {
 
         initTopPanel();
         initLogPanel();
+
+        loadingOverlay = new LoadingOverlay();
+        add(loadingOverlay, 0);
     }
 
     private void initTopPanel() {
@@ -43,7 +46,20 @@ public class SystemMaintenancePanel extends JPanel {
         backupBtn.addActionListener(e -> doBackup());
         restoreBtn.addActionListener(e -> doRestore());
         clearLogBtn.addActionListener(e -> doClearLog());
-        refreshLogBtn.addActionListener(e -> loadLogs());
+        refreshLogBtn.addActionListener(e -> {
+            setBusy(true);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() {
+                    loadLogs();
+                    return null;
+                }
+                @Override
+                protected void done() {
+                    setBusy(false);
+                }
+            }.execute();
+        });
 
         topPanel.add(backupBtn);
         topPanel.add(restoreBtn);
@@ -71,7 +87,25 @@ public class SystemMaintenancePanel extends JPanel {
         card.add(scrollPane, BorderLayout.CENTER);
 
         add(card, BorderLayout.CENTER);
+    }
+
+    @Override
+    public void refreshDataIfVisible() {
+        if (dataLoaded) {
+            SwingUtilities.invokeLater(() -> loadLogs());
+            return;
+        }
+        dataLoaded = true;
         loadLogs();
+    }
+
+    @Override
+    public void setBusy(boolean busy) {
+        if (busy) {
+            loadingOverlay.showOverlay();
+        } else {
+            loadingOverlay.hideOverlay();
+        }
     }
 
     private void doBackup() {

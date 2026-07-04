@@ -10,13 +10,14 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 用户管理面板
  * 负责模块: 曹城钧
  */
-public class UserManagePanel extends JPanel {
+public class UserManagePanel extends JPanel implements RefreshablePanel {
 
     private JTable table;
     private DefaultTableModel tableModel;
@@ -27,8 +28,10 @@ public class UserManagePanel extends JPanel {
     private JPasswordField passwordField;
     private JComboBox<String> roleBox;
 
-    private List<User> currentList;
+    private List<User> currentList = new ArrayList<>();
     private int selectedId = -1;
+    private boolean dataLoaded = false;
+    private LoadingOverlay loadingOverlay;
 
     public UserManagePanel() {
         setLayout(new BorderLayout(12, 12));
@@ -38,7 +41,9 @@ public class UserManagePanel extends JPanel {
         initTable();
         initButtonBar();
         initFormPanel();
-        loadData();
+
+        loadingOverlay = new LoadingOverlay();
+        add(loadingOverlay, 0);
     }
 
     private void initTable() {
@@ -68,6 +73,7 @@ public class UserManagePanel extends JPanel {
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setPreferredSize(new Dimension(0, 300));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         add(scrollPane, BorderLayout.NORTH);
     }
 
@@ -92,8 +98,19 @@ public class UserManagePanel extends JPanel {
         deleteBtn.addActionListener(e -> doDelete());
         resetPwdBtn.addActionListener(e -> doResetPassword());
         refreshBtn.addActionListener(e -> {
-            loadData();
-            clearForm();
+            setBusy(true);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() {
+                    loadData();
+                    return null;
+                }
+                @Override
+                protected void done() {
+                    clearForm();
+                    setBusy(false);
+                }
+            }.execute();
         });
 
         add(panel, BorderLayout.CENTER);
@@ -183,6 +200,25 @@ public class UserManagePanel extends JPanel {
         add(card, BorderLayout.SOUTH);
     }
 
+    @Override
+    public void refreshDataIfVisible() {
+        if (dataLoaded) {
+            SwingUtilities.invokeLater(() -> loadData());
+            return;
+        }
+        dataLoaded = true;
+        loadData();
+    }
+
+    @Override
+    public void setBusy(boolean busy) {
+        if (busy) {
+            loadingOverlay.showOverlay();
+        } else {
+            loadingOverlay.hideOverlay();
+        }
+    }
+
     private void loadData() {
         currentList = UserService.getInstance().getAllUsers();
         refreshTable();
@@ -190,6 +226,7 @@ public class UserManagePanel extends JPanel {
 
     private void refreshTable() {
         tableModel.setRowCount(0);
+        if (currentList == null || currentList.isEmpty()) return;
         for (User u : currentList) {
             tableModel.addRow(new Object[]{
                     u.getId(), u.getUsername(), u.getRealName(),
@@ -215,8 +252,7 @@ public class UserManagePanel extends JPanel {
         if (UserService.getInstance().addUser(user)) {
             JOptionPane.showMessageDialog(this, "添加成功！密码已自动加密存储。");
             Logger.info("管理员添加用户: " + username);
-            loadData();
-            clearForm();
+            refreshBtn.doClick();
         } else {
             JOptionPane.showMessageDialog(this, "添加失败，用户名可能已存在！", "错误", JOptionPane.ERROR_MESSAGE);
         }
@@ -235,8 +271,7 @@ public class UserManagePanel extends JPanel {
 
         if (UserService.getInstance().updateUser(user)) {
             JOptionPane.showMessageDialog(this, "修改成功！");
-            loadData();
-            clearForm();
+            refreshBtn.doClick();
         } else {
             JOptionPane.showMessageDialog(this, "修改失败！", "错误", JOptionPane.ERROR_MESSAGE);
         }
@@ -251,8 +286,7 @@ public class UserManagePanel extends JPanel {
         if (result == JOptionPane.YES_OPTION) {
             if (UserService.getInstance().deleteUser(selectedId)) {
                 JOptionPane.showMessageDialog(this, "删除成功！");
-                loadData();
-                clearForm();
+                refreshBtn.doClick();
             } else {
                 JOptionPane.showMessageDialog(this, "删除失败！", "错误", JOptionPane.ERROR_MESSAGE);
             }

@@ -11,13 +11,14 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 桥梁初始检查记录管理面板
  * 负责模块: 郑晟
  */
-public class BridgeInitialCheckPanel extends JPanel {
+public class BridgeInitialCheckPanel extends JPanel implements RefreshablePanel {
 
     private JTable table;
     private DefaultTableModel tableModel;
@@ -33,8 +34,10 @@ public class BridgeInitialCheckPanel extends JPanel {
     private JTextArea defectDescArea, suggestArea, conclusionArea;
     private JTextField nextCheckDateField;
 
-    private List<BridgeInitialCheck> currentList;
+    private List<BridgeInitialCheck> currentList = new ArrayList<>();
     private int selectedId = -1;
+    private boolean dataLoaded = false;
+    private LoadingOverlay loadingOverlay;
 
     public BridgeInitialCheckPanel() {
         setLayout(new BorderLayout(12, 12));
@@ -44,8 +47,9 @@ public class BridgeInitialCheckPanel extends JPanel {
         initTable();
         initSearchBar();
         initFormPanel();
-        loadData();
-        loadBridgeCombo();
+
+        loadingOverlay = new LoadingOverlay();
+        add(loadingOverlay, 0);
     }
 
     private void initTable() {
@@ -75,6 +79,7 @@ public class BridgeInitialCheckPanel extends JPanel {
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setPreferredSize(new Dimension(0, 260));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         add(scrollPane, BorderLayout.NORTH);
     }
 
@@ -107,8 +112,20 @@ public class BridgeInitialCheckPanel extends JPanel {
         searchBtn.addActionListener(e -> doSearch());
         refreshBtn.addActionListener(e -> {
             searchField.setText("");
-            loadData();
-            clearForm();
+            setBusy(true);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() {
+                    loadData();
+                    loadBridgeCombo();
+                    return null;
+                }
+                @Override
+                protected void done() {
+                    clearForm();
+                    setBusy(false);
+                }
+            }.execute();
         });
         addBtn.addActionListener(e -> doAdd());
         editBtn.addActionListener(e -> doEdit());
@@ -270,10 +287,35 @@ public class BridgeInitialCheckPanel extends JPanel {
         add(scrollPane, BorderLayout.SOUTH);
     }
 
+    @Override
+    public void refreshDataIfVisible() {
+        if (dataLoaded) {
+            SwingUtilities.invokeLater(() -> {
+                loadData();
+                loadBridgeCombo();
+            });
+            return;
+        }
+        dataLoaded = true;
+        loadData();
+        loadBridgeCombo();
+    }
+
+    @Override
+    public void setBusy(boolean busy) {
+        if (busy) {
+            loadingOverlay.showOverlay();
+        } else {
+            loadingOverlay.hideOverlay();
+        }
+    }
+
     private void loadBridgeCombo() {
+        Object selected = bridgeCombo.getSelectedItem();
         bridgeCombo.removeAllItems();
         List<Bridge> bridges = BridgeService.getInstance().getAllBridges();
         for (Bridge b : bridges) bridgeCombo.addItem(b.getId() + "-" + b.getBridgeName());
+        if (selected != null) bridgeCombo.setSelectedItem(selected);
     }
 
     private void loadData() {
@@ -283,6 +325,7 @@ public class BridgeInitialCheckPanel extends JPanel {
 
     private void refreshTable() {
         tableModel.setRowCount(0);
+        if (currentList == null || currentList.isEmpty()) return;
         for (BridgeInitialCheck c : currentList) {
             tableModel.addRow(new Object[]{
                     c.getId(), c.getCheckNo(), c.getBridgeName(), c.getCheckDate(),
@@ -307,8 +350,7 @@ public class BridgeInitialCheckPanel extends JPanel {
         if (c == null) return;
         if (BridgeInitialCheckService.getInstance().addCheck(c)) {
             JOptionPane.showMessageDialog(this, "添加成功！");
-            loadData();
-            clearForm();
+            refreshBtn.doClick();
         } else {
             JOptionPane.showMessageDialog(this, "添加失败！", "错误", JOptionPane.ERROR_MESSAGE);
         }
@@ -324,8 +366,7 @@ public class BridgeInitialCheckPanel extends JPanel {
         c.setId(selectedId);
         if (BridgeInitialCheckService.getInstance().updateCheck(c)) {
             JOptionPane.showMessageDialog(this, "修改成功！");
-            loadData();
-            clearForm();
+            refreshBtn.doClick();
         } else {
             JOptionPane.showMessageDialog(this, "修改失败！", "错误", JOptionPane.ERROR_MESSAGE);
         }
@@ -340,8 +381,7 @@ public class BridgeInitialCheckPanel extends JPanel {
         if (result == JOptionPane.YES_OPTION) {
             if (BridgeInitialCheckService.getInstance().deleteCheck(selectedId)) {
                 JOptionPane.showMessageDialog(this, "删除成功！");
-                loadData();
-                clearForm();
+                refreshBtn.doClick();
             } else {
                 JOptionPane.showMessageDialog(this, "删除失败！", "错误", JOptionPane.ERROR_MESSAGE);
             }

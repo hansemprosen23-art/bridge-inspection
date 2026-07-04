@@ -26,7 +26,7 @@ import java.util.Map;
  * 桥梁定期检查记录管理面板
  * 负责模块: 谭容昊
  */
-public class BridgeRegularCheckPanel extends JPanel {
+public class BridgeRegularCheckPanel extends JPanel implements RefreshablePanel {
 
     private JTable table;
     private DefaultTableModel tableModel;
@@ -44,10 +44,12 @@ public class BridgeRegularCheckPanel extends JPanel {
     private JTextArea defectDescArea, maintenanceSuggestArea, limitationSuggestArea, checkConclusionArea;
     private JTextField nextCheckDateField;
 
-    private List<BridgeRegularCheck> currentList;
+    private List<BridgeRegularCheck> currentList = new ArrayList<>();
     private int selectedId = -1;
     private List<BridgeComponentScore> pendingComponentScores = new ArrayList<>();
     private String pendingBridgeType = "梁式桥";
+    private boolean dataLoaded = false;
+    private LoadingOverlay loadingOverlay;
 
     public BridgeRegularCheckPanel() {
         setLayout(new BorderLayout(12, 12));
@@ -57,8 +59,9 @@ public class BridgeRegularCheckPanel extends JPanel {
         initTable();
         initSearchBar();
         initFormPanel();
-        loadData();
-        loadBridgeCombo();
+
+        loadingOverlay = new LoadingOverlay();
+        add(loadingOverlay, 0);
     }
 
     private void initTable() {
@@ -88,6 +91,7 @@ public class BridgeRegularCheckPanel extends JPanel {
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setPreferredSize(new Dimension(0, 260));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         add(scrollPane, BorderLayout.NORTH);
     }
 
@@ -129,8 +133,20 @@ public class BridgeRegularCheckPanel extends JPanel {
         searchBtn.addActionListener(e -> doSearch());
         refreshBtn.addActionListener(e -> {
             searchField.setText("");
-            loadData();
-            clearForm();
+            setBusy(true);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() {
+                    loadData();
+                    loadBridgeCombo();
+                    return null;
+                }
+                @Override
+                protected void done() {
+                    clearForm();
+                    setBusy(false);
+                }
+            }.execute();
         });
         addBtn.addActionListener(e -> doAdd());
         editBtn.addActionListener(e -> doEdit());
@@ -320,10 +336,35 @@ public class BridgeRegularCheckPanel extends JPanel {
         add(scrollPane, BorderLayout.SOUTH);
     }
 
+    @Override
+    public void refreshDataIfVisible() {
+        if (dataLoaded) {
+            SwingUtilities.invokeLater(() -> {
+                loadData();
+                loadBridgeCombo();
+            });
+            return;
+        }
+        dataLoaded = true;
+        loadData();
+        loadBridgeCombo();
+    }
+
+    @Override
+    public void setBusy(boolean busy) {
+        if (busy) {
+            loadingOverlay.showOverlay();
+        } else {
+            loadingOverlay.hideOverlay();
+        }
+    }
+
     private void loadBridgeCombo() {
+        Object selected = bridgeCombo.getSelectedItem();
         bridgeCombo.removeAllItems();
         List<Bridge> bridges = BridgeService.getInstance().getAllBridges();
         for (Bridge b : bridges) bridgeCombo.addItem(b.getId() + "-" + b.getBridgeName());
+        if (selected != null) bridgeCombo.setSelectedItem(selected);
     }
 
     private void loadData() {
@@ -333,6 +374,7 @@ public class BridgeRegularCheckPanel extends JPanel {
 
     private void refreshTable() {
         tableModel.setRowCount(0);
+        if (currentList == null || currentList.isEmpty()) return;
         for (BridgeRegularCheck c : currentList) {
             tableModel.addRow(new Object[]{
                     c.getId(), c.getCheckNo(), c.getBridgeName(), c.getCheckDate(),
@@ -472,8 +514,7 @@ public class BridgeRegularCheckPanel extends JPanel {
         if (c == null) return;
         if (BridgeRegularCheckService.getInstance().addCheck(c, pendingComponentScores)) {
             JOptionPane.showMessageDialog(this, "添加成功！");
-            loadData();
-            clearForm();
+            refreshBtn.doClick();
         } else {
             JOptionPane.showMessageDialog(this, "添加失败！", "错误", JOptionPane.ERROR_MESSAGE);
         }
@@ -489,8 +530,7 @@ public class BridgeRegularCheckPanel extends JPanel {
         c.setId(selectedId);
         if (BridgeRegularCheckService.getInstance().updateCheck(c)) {
             JOptionPane.showMessageDialog(this, "修改成功！");
-            loadData();
-            clearForm();
+            refreshBtn.doClick();
         } else {
             JOptionPane.showMessageDialog(this, "修改失败！", "错误", JOptionPane.ERROR_MESSAGE);
         }
@@ -505,8 +545,7 @@ public class BridgeRegularCheckPanel extends JPanel {
         if (result == JOptionPane.YES_OPTION) {
             if (BridgeRegularCheckService.getInstance().deleteCheck(selectedId)) {
                 JOptionPane.showMessageDialog(this, "删除成功！");
-                loadData();
-                clearForm();
+                refreshBtn.doClick();
             } else {
                 JOptionPane.showMessageDialog(this, "删除失败！", "错误", JOptionPane.ERROR_MESSAGE);
             }

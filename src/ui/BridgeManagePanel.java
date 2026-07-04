@@ -14,13 +14,15 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 桥梁基本状况卡片管理面板
  * 负责模块: 张子健
+ * 优化：实现 RefreshablePanel，首次显示时异步加载数据，不阻塞导航切换
  */
-public class BridgeManagePanel extends JPanel {
+public class BridgeManagePanel extends JPanel implements RefreshablePanel {
 
     private JTable table;
     private DefaultTableModel tableModel;
@@ -38,8 +40,10 @@ public class BridgeManagePanel extends JPanel {
     private JTextArea remarkArea;
     private PhotoUploadPanel photoUploadPanel;
 
-    private List<Bridge> currentList;
+    private List<Bridge> currentList = new ArrayList<>();
     private int selectedId = -1;
+    private boolean dataLoaded = false;
+    private LoadingOverlay loadingOverlay;
 
     public BridgeManagePanel() {
         setLayout(new BorderLayout(12, 12));
@@ -49,7 +53,9 @@ public class BridgeManagePanel extends JPanel {
         initTable();
         initSearchBar();
         initFormPanel();
-        loadData();
+
+        loadingOverlay = new LoadingOverlay();
+        add(loadingOverlay, 0);
     }
 
     private void initTable() {
@@ -79,6 +85,7 @@ public class BridgeManagePanel extends JPanel {
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         scrollPane.setPreferredSize(new Dimension(0, 280));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         add(scrollPane, BorderLayout.NORTH);
     }
 
@@ -118,8 +125,19 @@ public class BridgeManagePanel extends JPanel {
         searchBtn.addActionListener(e -> doSearch());
         refreshBtn.addActionListener(e -> {
             searchField.setText("");
-            loadData();
-            clearForm();
+            setBusy(true);
+            new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() {
+                    loadData();
+                    return null;
+                }
+                @Override
+                protected void done() {
+                    clearForm();
+                    setBusy(false);
+                }
+            }.execute();
         });
         addBtn.addActionListener(e -> doAdd());
         editBtn.addActionListener(e -> doEdit());
@@ -140,12 +158,12 @@ public class BridgeManagePanel extends JPanel {
 
     private void initFormPanel() {
         CardPanel card = new CardPanel(new GridBagLayout());
-        card.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(), "桥梁详细信息",
+        card.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(), "桥梁卡片信息",
                 javax.swing.border.TitledBorder.LEFT, javax.swing.border.TitledBorder.TOP,
                 new Font("微软雅黑", Font.BOLD, 15), ThemeColors.PRIMARY));
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(6, 8, 6, 8);
+        gbc.insets = new Insets(6, 10, 6, 10);
         gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
@@ -153,14 +171,14 @@ public class BridgeManagePanel extends JPanel {
         gbc.gridy = 0;
         gbc.gridx = 0;
         gbc.weightx = 0;
-        card.add(createLabel("桥梁编号*"), gbc);
+        card.add(createLabel("桥梁编号"), gbc);
         gbc.gridx = 1;
         gbc.weightx = 1;
         bridgeNoField = new JTextField(14);
         card.add(bridgeNoField, gbc);
         gbc.gridx = 2;
         gbc.weightx = 0;
-        card.add(createLabel("桥梁名称*"), gbc);
+        card.add(createLabel("桥梁名称"), gbc);
         gbc.gridx = 3;
         gbc.weightx = 1;
         bridgeNameField = new JTextField(14);
@@ -384,6 +402,25 @@ public class BridgeManagePanel extends JPanel {
         add(scrollPane, BorderLayout.SOUTH);
     }
 
+    @Override
+    public void refreshDataIfVisible() {
+        if (dataLoaded) {
+            SwingUtilities.invokeLater(() -> loadData());
+            return;
+        }
+        dataLoaded = true;
+        loadData();
+    }
+
+    @Override
+    public void setBusy(boolean busy) {
+        if (busy) {
+            loadingOverlay.showOverlay();
+        } else {
+            loadingOverlay.hideOverlay();
+        }
+    }
+
     private void loadData() {
         currentList = BridgeService.getInstance().getAllBridges();
         refreshTable();
@@ -391,12 +428,19 @@ public class BridgeManagePanel extends JPanel {
 
     private void refreshTable() {
         tableModel.setRowCount(0);
-        for (Bridge b : currentList) {
-            tableModel.addRow(new Object[]{
+        if (currentList == null || currentList.isEmpty()) return;
+
+        Object[][] data = new Object[currentList.size()][10];
+        for (int i = 0; i < currentList.size(); i++) {
+            Bridge b = currentList.get(i);
+            data[i] = new Object[]{
                     b.getId(), b.getBridgeNo(), b.getBridgeName(), b.getRouteName(),
                     b.getBridgeType(), b.getStructureType(), b.getTotalLength(),
                     b.getTotalWidth(), b.getCheckLevel(), b.getTechStatus()
-            });
+            };
+        }
+        for (Object[] row : data) {
+            tableModel.addRow(row);
         }
     }
 
@@ -415,8 +459,7 @@ public class BridgeManagePanel extends JPanel {
         if (b == null) return;
         if (BridgeService.getInstance().addBridge(b)) {
             JOptionPane.showMessageDialog(this, "添加成功！");
-            loadData();
-            clearForm();
+            refreshBtn.doClick();
         } else {
             JOptionPane.showMessageDialog(this, "添加失败，桥梁编号可能已存在！", "错误", JOptionPane.ERROR_MESSAGE);
         }
@@ -432,8 +475,7 @@ public class BridgeManagePanel extends JPanel {
         b.setId(selectedId);
         if (BridgeService.getInstance().updateBridge(b)) {
             JOptionPane.showMessageDialog(this, "修改成功！");
-            loadData();
-            clearForm();
+            refreshBtn.doClick();
         } else {
             JOptionPane.showMessageDialog(this, "修改失败！", "错误", JOptionPane.ERROR_MESSAGE);
         }
@@ -448,10 +490,28 @@ public class BridgeManagePanel extends JPanel {
         if (result == JOptionPane.YES_OPTION) {
             if (BridgeService.getInstance().deleteBridge(selectedId)) {
                 JOptionPane.showMessageDialog(this, "删除成功！");
-                loadData();
-                clearForm();
+                refreshBtn.doClick();
             } else {
                 JOptionPane.showMessageDialog(this, "删除失败！", "错误", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    private void doImport() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("CSV文件", "csv"));
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            List<Bridge> imported = CsvBridgeImporter.importFromCSV(file.getAbsolutePath());
+            if (!imported.isEmpty()) {
+                int success = 0;
+                for (Bridge bridge : imported) {
+                    if (BridgeService.getInstance().addBridge(bridge)) success++;
+                }
+                JOptionPane.showMessageDialog(this, "成功导入 " + success + " / " + imported.size() + " 条桥梁记录！");
+                refreshBtn.doClick();
+            } else {
+                JOptionPane.showMessageDialog(this, "导入失败或文件为空！", "错误", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -479,42 +539,6 @@ public class BridgeManagePanel extends JPanel {
             } else {
                 JOptionPane.showMessageDialog(this, "导出失败！", "错误", JOptionPane.ERROR_MESSAGE);
             }
-        }
-    }
-
-    private void doImport() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("CSV文件", "csv"));
-        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            File file = chooser.getSelectedFile();
-            String path = file.getAbsolutePath();
-
-            List<Bridge> bridges = CsvBridgeImporter.importFromCSV(path);
-            if (bridges.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "未从CSV中读取到有效数据！", "提示", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-
-            int successCount = 0;
-            int failCount = 0;
-            for (Bridge b : bridges) {
-                // 检查桥梁编号是否已存在
-                if (BridgeService.getInstance().getBridgeByNo(b.getBridgeNo()) != null) {
-                    failCount++;
-                    continue;
-                }
-                if (BridgeService.getInstance().addBridge(b)) {
-                    successCount++;
-                } else {
-                    failCount++;
-                }
-            }
-
-            JOptionPane.showMessageDialog(this,
-                "CSV导入完成！\n成功导入: " + successCount + " 条\n跳过/失败: " + failCount + " 条",
-                "导入结果", JOptionPane.INFORMATION_MESSAGE);
-            loadData();
-            clearForm();
         }
     }
 
