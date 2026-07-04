@@ -28,13 +28,15 @@ public class MainFrame extends JFrame {
     private JPanel[] navIndicators;
     private int selectedIndex = 0;
 
-    private final String[] navTitles = {"桥梁卡片", "初始检查", "定期检查", "数据统计", "用户管理", "系统维护"};
+    private final String[] navTitles = {"桥梁卡片", "初始检查", "定期检查", "BCI趋势", "检查提醒", "数据统计", "用户管理", "系统维护"};
     private final Color[] navColors = {
         new Color(41, 98, 255),
         new Color(46, 125, 50),
         new Color(2, 136, 209),
-        new Color(123, 31, 162),
+        new Color(192, 72, 72),
         new Color(245, 124, 0),
+        new Color(123, 31, 162),
+        new Color(0, 137, 123),
         new Color(96, 125, 139)
     };
 
@@ -92,10 +94,15 @@ public class MainFrame extends JFrame {
         navPanel.setLayout(new BoxLayout(navPanel, BoxLayout.Y_AXIS));
         navPanel.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
 
-        String[] titles = currentUser.isAdmin() ? navTitles :
-            new String[]{"桥梁卡片", "初始检查", "定期检查", "数据统计"};
-        Color[] colors = currentUser.isAdmin() ? navColors :
-            new Color[]{navColors[0], navColors[1], navColors[2], navColors[3]};
+        String[] titles;
+        Color[] colors;
+        if (currentUser.isAdmin()) {
+            titles = navTitles;
+            colors = navColors;
+        } else {
+            titles = new String[]{"桥梁卡片", "初始检查", "定期检查", "BCI趋势", "检查提醒", "数据统计"};
+            colors = new Color[]{navColors[0], navColors[1], navColors[2], navColors[3], navColors[4], navColors[5]};
+        }
 
         for (int i = 0; i < titles.length; i++) {
             navItems[i] = createNavItem(titles[i], colors[i], i);
@@ -293,9 +300,11 @@ public class MainFrame extends JFrame {
             case 0: return new BridgeManagePanel();
             case 1: return new BridgeInitialCheckPanel();
             case 2: return new BridgeRegularCheckPanel();
-            case 3: return new StatisticsPanel();
-            case 4: return new UserManagePanel();
-            case 5: return new SystemMaintenancePanel();
+            case 3: return new BCITrendChartPanel();
+            case 4: return new ReminderPanel();
+            case 5: return new StatisticsPanel();
+            case 6: return new UserManagePanel();
+            case 7: return new SystemMaintenancePanel();
             default: return new JPanel();
         }
     }
