@@ -40,7 +40,7 @@ public class ConnectionPool {
         return instance;
     }
 
-    private ConnectionPool(String url, String username, String password) {
+    public ConnectionPool(String url, String username, String password) {
         this.url = url;
         this.username = username;
         this.password = password;

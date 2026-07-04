@@ -6,6 +6,7 @@ import service.ReportService;
 import ui.common.*;
 import util.CsvBridgeImporter;
 import util.Logger;
+import util.PaginationUtil;
 import util.ValidationUtil;
 
 import javax.swing.*;
@@ -26,9 +27,12 @@ public class BridgeManagePanel extends JPanel implements RefreshablePanel {
 
     private JTable table;
     private DefaultTableModel tableModel;
-    private JTextField searchField;
+    private SearchTextField searchField;
     private RoundedButton addBtn, editBtn, deleteBtn, mapBtn, exportBtn, importBtn;
-    private OutlineButton searchBtn, refreshBtn;
+    private OutlineButton refreshBtn;
+    private PaginationPanel paginationPanel;
+
+    private List<Bridge> filteredList = new ArrayList<>();
 
     private JTextField bridgeNoField, bridgeNameField, routeNameField, routeGradeField;
     private JTextField bridgeTypeField, structureTypeField, spanCombinationField;
@@ -74,8 +78,8 @@ public class BridgeManagePanel extends JPanel implements RefreshablePanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 int row = table.getSelectedRow();
-                if (row >= 0 && currentList != null && row < currentList.size()) {
-                    Bridge b = currentList.get(row);
+                if (row >= 0 && filteredList != null && row < filteredList.size()) {
+                    Bridge b = filteredList.get(row);
                     selectedId = b.getId();
                     fillForm(b);
                 }
@@ -93,15 +97,10 @@ public class BridgeManagePanel extends JPanel implements RefreshablePanel {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         panel.setOpaque(false);
 
-        searchField = new JTextField(18);
-        searchField.setFont(new Font("微软雅黑", Font.PLAIN, 13));
-        searchField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(ThemeColors.BORDER),
-                BorderFactory.createEmptyBorder(6, 10, 6, 10)
-        ));
+        searchField = new SearchTextField(18);
+        searchField.setDebounceMs(300);
+        searchField.setSearchCallback(this::doSearch);
 
-        searchBtn = new OutlineButton("搜索", ThemeColors.PRIMARY);
-        refreshBtn = new OutlineButton("刷新", ThemeColors.TEXT_SECONDARY);
         addBtn = new RoundedButton("新增", ThemeColors.SUCCESS);
         editBtn = new RoundedButton("修改", ThemeColors.INFO);
         deleteBtn = new RoundedButton("删除", ThemeColors.DANGER);
@@ -111,7 +110,6 @@ public class BridgeManagePanel extends JPanel implements RefreshablePanel {
 
         panel.add(new JLabel("搜索:"));
         panel.add(searchField);
-        panel.add(searchBtn);
         panel.add(refreshBtn);
         panel.add(Box.createHorizontalStrut(10));
         panel.add(importBtn);
@@ -122,7 +120,6 @@ public class BridgeManagePanel extends JPanel implements RefreshablePanel {
         panel.add(editBtn);
         panel.add(deleteBtn);
 
-        searchBtn.addActionListener(e -> doSearch());
         refreshBtn.addActionListener(e -> {
             searchField.setText("");
             setBusy(true);
@@ -147,6 +144,11 @@ public class BridgeManagePanel extends JPanel implements RefreshablePanel {
         importBtn.addActionListener(e -> doImport());
 
         add(panel, BorderLayout.CENTER);
+
+        // 底部分页
+        paginationPanel = new PaginationPanel();
+        paginationPanel.setPageChangeListener((page, pageSize) -> refreshTablePage(page, pageSize));
+        add(paginationPanel, BorderLayout.SOUTH);
     }
 
     private JLabel createLabel(String text) {
@@ -423,35 +425,33 @@ public class BridgeManagePanel extends JPanel implements RefreshablePanel {
 
     private void loadData() {
         currentList = BridgeService.getInstance().getAllBridges();
-        refreshTable();
+        filteredList = new ArrayList<>(currentList);
+        paginationPanel.setTotalCount(filteredList.size());
+        refreshTablePage(1, paginationPanel.getPageSize());
     }
 
-    private void refreshTable() {
+    private void refreshTablePage(int page, int pageSize) {
+        List<Bridge> pageData = PaginationUtil.paginate(filteredList, page, pageSize);
         tableModel.setRowCount(0);
-        if (currentList == null || currentList.isEmpty()) return;
+        if (pageData == null || pageData.isEmpty()) return;
 
-        Object[][] data = new Object[currentList.size()][10];
-        for (int i = 0; i < currentList.size(); i++) {
-            Bridge b = currentList.get(i);
-            data[i] = new Object[]{
+        for (Bridge b : pageData) {
+            tableModel.addRow(new Object[]{
                     b.getId(), b.getBridgeNo(), b.getBridgeName(), b.getRouteName(),
                     b.getBridgeType(), b.getStructureType(), b.getTotalLength(),
                     b.getTotalWidth(), b.getCheckLevel(), b.getTechStatus()
-            };
-        }
-        for (Object[] row : data) {
-            tableModel.addRow(row);
+            });
         }
     }
 
-    private void doSearch() {
-        String keyword = searchField.getText().trim();
+    private void doSearch(String keyword) {
         if (keyword.isEmpty()) {
-            loadData();
-            return;
+            filteredList = new ArrayList<>(currentList);
+        } else {
+            filteredList = BridgeService.getInstance().searchByName(keyword);
         }
-        currentList = BridgeService.getInstance().searchByName(keyword);
-        refreshTable();
+        paginationPanel.setTotalCount(filteredList.size());
+        refreshTablePage(1, paginationPanel.getPageSize());
     }
 
     private void doAdd() {

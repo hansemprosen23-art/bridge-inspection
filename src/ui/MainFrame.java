@@ -4,6 +4,7 @@ import entity.User;
 import ui.common.LoadingOverlay;
 import ui.common.RefreshablePanel;
 import ui.common.ThemeColors;
+import util.Logger;
 
 import javax.swing.*;
 import java.awt.*;
@@ -139,6 +140,32 @@ public class MainFrame extends JFrame {
 
         // 默认显示第一个面板
         SwingUtilities.invokeLater(() -> switchPanel(0));
+
+        // 后台预加载其他面板数据，提升后续切换响应速度
+        preloadPanelData();
+    }
+
+    /**
+     * 后台预加载其他面板数据
+     * 登录后利用空闲时间提前加载常用数据到缓存
+     */
+    private void preloadPanelData() {
+        SwingWorker<Void, Void> preloader = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() {
+                try {
+                    service.BridgeService.getInstance().getAllBridges();
+                    service.BridgeInitialCheckService.getInstance().getAllChecks();
+                    service.BridgeRegularCheckService.getInstance().getAllChecks();
+                    service.UserService.getInstance().getAllUsers();
+                    Logger.info("后台预加载完成");
+                } catch (Exception e) {
+                    Logger.error("后台预加载失败", e);
+                }
+                return null;
+            }
+        };
+        preloader.execute();
     }
 
     private JPanel createNavItem(String title, Color accentColor, int index) {

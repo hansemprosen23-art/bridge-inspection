@@ -5,22 +5,58 @@ import util.Logger;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.*;
 
 /**
  * 统计查询业务逻辑层
  * 负责模块: 曹城钧
  */
 public class StatisticsService {
-    
+
     private static StatisticsService instance;
-    
-    private StatisticsService() {}
-    
+    private final ExecutorService executor;
+
+    private StatisticsService() {
+        // 固定大小线程池，用于并发执行独立统计查询
+        this.executor = Executors.newFixedThreadPool(4, r -> {
+            Thread t = new Thread(r, "statistics-pool");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
     public static synchronized StatisticsService getInstance() {
         if (instance == null) {
             instance = new StatisticsService();
         }
         return instance;
+    }
+
+    /**
+     * 并发获取所有统计数据，适用于独立查询场景
+     */
+    public StatisticsResult getAllStatisticsConcurrent() {
+        StatisticsResult result = new StatisticsResult();
+        try {
+            Future<Integer> bridgeCountFuture = executor.submit(() -> getTotalBridges());
+            Future<Integer> initialCountFuture = executor.submit(() -> getTotalInitialChecks());
+            Future<Integer> regularCountFuture = executor.submit(() -> getTotalRegularChecks());
+            Future<Map<String, Integer>> typeFuture = executor.submit(() -> countByBridgeType());
+            Future<Map<String, Integer>> levelFuture = executor.submit(() -> countByCheckLevel());
+            Future<Map<String, Integer>> statusFuture = executor.submit(() -> countByTechStatus());
+            Future<Map<String, Integer>> yearFuture = executor.submit(() -> countChecksByYear());
+
+            result.totalBridges = bridgeCountFuture.get();
+            result.totalInitialChecks = initialCountFuture.get();
+            result.totalRegularChecks = regularCountFuture.get();
+            result.byBridgeType = typeFuture.get();
+            result.byCheckLevel = levelFuture.get();
+            result.byTechStatus = statusFuture.get();
+            result.byYear = yearFuture.get();
+        } catch (Exception e) {
+            Logger.error("并发统计查询失败", e);
+        }
+        return result;
     }
     
     /**

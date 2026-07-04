@@ -165,8 +165,8 @@ public class StatisticsPanel extends JPanel implements RefreshablePanel {
     }
 
     private void refreshData() {
-        // 使用合并查询，一次数据库连接获取所有统计
-        StatisticsService.StatisticsResult stats = StatisticsService.getInstance().getAllStatistics();
+        // 使用并发查询，7个独立统计并行执行，最大化利用多核CPU和连接池
+        StatisticsService.StatisticsResult stats = StatisticsService.getInstance().getAllStatisticsConcurrent();
 
         updateCardValue(totalBridgeLabel, String.valueOf(stats.totalBridges));
         updateCardValue(totalInitialLabel, String.valueOf(stats.totalInitialChecks));
