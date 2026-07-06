@@ -56,6 +56,13 @@ public class LoadingOverlay extends JPanel {
     public void hideOverlay() {
         timer.stop();
         setVisible(false);
+        SwingUtilities.invokeLater(() -> {
+            Container parent = getParent();
+            if (parent != null) {
+                parent.revalidate();
+                parent.repaint();
+            }
+        });
     }
 
     @Override

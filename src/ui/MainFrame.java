@@ -175,6 +175,28 @@ public class MainFrame extends JFrame {
         preloader.execute();
     }
 
+    /**
+     * 安全切换面板：即使数据加载异常也确保关闭加载遮罩
+     */
+    private void safeRefreshPanel(RefreshablePanel panel) {
+        panel.setBusy(true);
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() {
+                try {
+                    panel.refreshDataIfVisible();
+                } catch (Exception e) {
+                    Logger.error("面板数据加载失败", e);
+                }
+                return null;
+            }
+            @Override
+            protected void done() {
+                panel.setBusy(false);
+            }
+        }.execute();
+    }
+
     private JPanel createNavItem(String title, Color accentColor, int index) {
         JPanel item = new JPanel(new BorderLayout());
         item.setOpaque(false);
@@ -279,19 +301,7 @@ public class MainFrame extends JFrame {
 
         // 3. 异步加载数据（不阻塞 UI 渲染）
         if (panel instanceof RefreshablePanel) {
-            RefreshablePanel refreshable = (RefreshablePanel) panel;
-            refreshable.setBusy(true);
-            new SwingWorker<Void, Void>() {
-                @Override
-                protected Void doInBackground() {
-                    refreshable.refreshDataIfVisible();
-                    return null;
-                }
-                @Override
-                protected void done() {
-                    refreshable.setBusy(false);
-                }
-            }.execute();
+            safeRefreshPanel((RefreshablePanel) panel);
         }
     }
 

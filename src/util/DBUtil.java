@@ -21,12 +21,12 @@ public class DBUtil {
 
     private static final String DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
 
-    private static final String URL = "jdbc:sqlserver://localhost:1433;databaseName=bridge_inspection;encrypt=false";
+    private static final String URL = "jdbc:sqlserver://localhost:1433;databaseName=bridge_inspection;encrypt=false;loginTimeout=5;socketTimeout=10";
 
     private static final String USERNAME = "sa";
     private static final String PASSWORD = "123456";
 
-    // 连接池开关，生产环境建议启用
+    // 连接池开关：如果遇到连接问题，可临时设为 false 使用直连
     private static final boolean USE_CONNECTION_POOL = true;
 
     // 内置连接池实例
