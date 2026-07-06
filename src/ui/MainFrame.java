@@ -57,7 +57,7 @@ public class MainFrame extends JFrame {
     }
 
     private void initComponents() {
-        int navCount = currentUser.isAdmin() ? 6 : 4;
+        int navCount = currentUser.isAdmin() ? navTitles.length : 6;
         navItems = new JPanel[navCount];
         navLabels = new JLabel[navCount];
         navIndicators = new JPanel[navCount];
