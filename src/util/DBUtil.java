@@ -26,7 +26,7 @@ public class DBUtil {
     private static final String USERNAME = "sa";
     private static final String PASSWORD = "123456";
 
-    // 连接池开关：如果遇到连接问题，可临时设为 false 使用直连
+    // 连接池开关：如果遇到连接问题，可临时设为 false 使用直连（排查数据库问题时常用）
     private static final boolean USE_CONNECTION_POOL = true;
 
     // 内置连接池实例

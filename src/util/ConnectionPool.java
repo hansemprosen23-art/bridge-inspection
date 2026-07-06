@@ -17,8 +17,8 @@ import java.util.concurrent.Executor;
  */
 public class ConnectionPool {
 
-    private static final int MAX_POOL_SIZE = 10;
-    private static final int INITIAL_POOL_SIZE = 3;
+    private static final int MAX_POOL_SIZE = 20;
+    private static final int INITIAL_POOL_SIZE = 5;
     private static final long CONNECTION_TIMEOUT_MS = 5000;
 
     private final BlockingQueue<Connection> pool;
@@ -75,6 +75,7 @@ public class ConnectionPool {
 
     /**
      * 获取连接
+     * 优先从池中获取，无可用连接时尝试新建，新建失败则抛出包含真实原因的异常
      */
     public Connection getConnection() throws SQLException {
         if (shutdown) {
@@ -82,16 +83,17 @@ public class ConnectionPool {
         }
 
         Connection conn = pool.poll();
-        if (conn == null || conn.isClosed()) {
-            conn = createNewConnection();
+        if (conn != null && !conn.isClosed()) {
+            return new PooledConnection(conn, this);
         }
 
-        if (conn == null) {
-            throw new SQLException("无法获取数据库连接，连接池已满");
+        // 池中无可用连接，尝试新建
+        conn = createNewConnection();
+        if (conn != null) {
+            return new PooledConnection(conn, this);
         }
 
-        // 包装连接，归还时自动回到连接池
-        return new PooledConnection(conn, this);
+        throw new SQLException("无法创建新的数据库连接，请检查SQL Server服务、数据库配置及网络连接");
     }
 
     /**
