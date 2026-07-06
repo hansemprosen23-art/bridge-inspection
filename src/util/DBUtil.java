@@ -21,8 +21,8 @@ public class DBUtil {
 
     private static final String DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
 
-    // 使用命名实例连接（从 SSMS 看到实例名为 zs）
-    private static final String URL = "jdbc:sqlserver://localhost\\zs;databaseName=bridge_inspection;encrypt=false;loginTimeout=5;socketTimeout=10";
+    // 使用固定端口 1433 直连（已在 SQL Server 配置管理器中确认）
+    private static final String URL = "jdbc:sqlserver://localhost:1433;databaseName=bridge_inspection;encrypt=false;loginTimeout=5;socketTimeout=10";
 
     private static final String USERNAME = "sa";
     private static final String PASSWORD = "123456";
