@@ -22,8 +22,9 @@ public class DBUtil {
     private static final String DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
 
     // 使用固定端口 1433 直连（已在 SQL Server 配置管理器中确认）
-    // trustServerCertificate=true 解决 SQL Server 2022 驱动 SSL 握手问题
-    private static final String URL = "jdbc:sqlserver://127.0.0.1:1433;databaseName=bridge_inspection;encrypt=false;trustServerCertificate=true;loginTimeout=5;socketTimeout=10";
+    // SQL Server 2022 默认强制加密，需设置 encrypt=true + trustServerCertificate=true
+    // 增大超时时间避免本地服务响应慢导致握手超时
+    private static final String URL = "jdbc:sqlserver://127.0.0.1:1433;databaseName=bridge_inspection;encrypt=true;trustServerCertificate=true;loginTimeout=30;socketTimeout=30;connectTimeout=30000;sslProtocol=TLSv1.2;authentication=SqlPassword";
 
     private static final String USERNAME = "sa";
     private static final String PASSWORD = "123456";

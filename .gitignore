@@ -1,19 +1,36 @@
-# 编译输出
-out/
+# Java
 *.class
+*.jar
+*.war
+*.ear
+target/
+build/
+out/
+
+# Maven
+.mvn/
+!/.mvn/wrapper/maven-wrapper.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+
+# Gradle
+.gradle/
+!gradle/wrapper/gradle-wrapper.jar
 
 # IDE
 .idea/
 *.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+.vscode/
 
-# 日志与运行时数据
-logs/
-photos/
-*.log
-
-# 数据库文件（如果以后使用 SQLite）
-*.db
-
-# 操作系统文件
+# OS
 .DS_Store
 Thumbs.db
